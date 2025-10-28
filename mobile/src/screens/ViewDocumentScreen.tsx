@@ -32,7 +32,7 @@ export default function ViewDocumentScreen({ doc, onBack, onDeleted, userId }: {
   const [backUri, setBackUri] = useState<string | undefined>(doc.backImageUri);
 
   useEffect(() => {
-    const base = process.env.EXPO_PUBLIC_API_BASE;
+    const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || '';
     if (!base || !doc.id) return;
     (async () => {
       try {

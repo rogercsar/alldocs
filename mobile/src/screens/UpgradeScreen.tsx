@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Button, ActivityIndicator, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL || '';
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || '';
 
 export default function UpgradeScreen({ onClose }: { onClose: () => void }) {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);

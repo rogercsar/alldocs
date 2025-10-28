@@ -1,7 +1,7 @@
 import { supabase, STORAGE_BUCKET } from '../supabase';
 import type { DocumentItem } from '../types';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL || '';
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || '';
 
 async function uploadImage(path: string, userId: string): Promise<string> {
   if (!path) return '';

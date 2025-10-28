@@ -12,7 +12,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, userId }: { 
     const [items, cnt] = await Promise.all([getDocuments(), countDocuments()]);
     setDocs(items);
     try {
-      const base = process.env.EXPO_PUBLIC_API_BASE;
+      const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || '';
       let isPremium = false;
       if (base) {
         const res = await fetch(`${base}/.netlify/functions/get-user-status?userId=${userId}`);

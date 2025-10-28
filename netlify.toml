@@ -1,7 +1,10 @@
 [build]
   functions = "netlify/functions"
-  command = ""
+  command = "npm ci --prefix mobile && npm ci --prefix netlify && npx --yes --prefix mobile expo export --platform web --output-dir web-build"
   publish = "mobile/web-build"
+
+[build.environment]
+  NODE_VERSION = "18"
 
 [functions]
   node_bundler = "esbuild"
@@ -17,3 +20,5 @@
   FAILURE_URL = ""
   PENDING_URL = ""
   URL = ""
+  EXPO_PUBLIC_API_BASE = ""
+  EXPO_PUBLIC_API_BASE_URL = ""
