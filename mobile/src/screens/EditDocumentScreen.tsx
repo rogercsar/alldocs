@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Image, Alert, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { addDocument, saveImageToLocal } from '../storage/db';
+import { addDocument, updateDocument, saveImageToLocal } from '../storage/db';
 import { supabase } from '../supabase';
 import { syncDocumentAddOrUpdate } from '../storage/sync';
 
@@ -26,18 +26,26 @@ function getTemplate(type: typeof DOC_TYPES[number]) {
   }
 }
 
-export default function EditDocumentScreen({ onSaved, userId }: { onSaved: () => void; userId: string }) {
-  const [name, setName] = useState('');
-  const [number, setNumber] = useState('');
-  const [frontUri, setFrontUri] = useState<string | undefined>();
-  const [backUri, setBackUri] = useState<string | undefined>();
+export default function EditDocumentScreen({ onSaved, userId, document }: { onSaved: () => void; userId: string; document?: DocumentItem }) {
+  const [name, setName] = useState(document?.name || '');
+  const [number, setNumber] = useState(document?.number || '');
+  const [frontUri, setFrontUri] = useState<string | undefined>(document?.frontImageUri || undefined);
+  const [backUri, setBackUri] = useState<string | undefined>(document?.backImageUri || undefined);
   const [saving, setSaving] = useState(false);
-  const [docType, setDocType] = useState<typeof DOC_TYPES[number]>('RG');
+  const [docType, setDocType] = useState<typeof DOC_TYPES[number]>(document?.type as any || 'RG');
+
+  useEffect(() => {
+    setName(document?.name || '');
+    setNumber(document?.number || '');
+    setFrontUri(document?.frontImageUri || undefined);
+    setBackUri(document?.backImageUri || undefined);
+    setDocType((document?.type as any) || 'RG');
+  }, [document?.id]);
 
   const template = getTemplate(docType);
 
   async function pick(setter: (uri: string) => void) {
-    const res = await ImagePicker.launchImageLibraryAsync({ selectionLimit: 1, mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
+    const res = await ImagePicker.launchImageLibraryAsync({ selectionLimit: 1, mediaTypes: [ImagePicker.MediaType.Image], quality: 0.9 });
     if (!res.canceled && res.assets?.[0]?.uri) setter(res.assets[0].uri);
   }
 
@@ -49,6 +57,19 @@ export default function EditDocumentScreen({ onSaved, userId }: { onSaved: () =>
   async function save() {
     if (!name || !number) { Alert.alert('Campos obrigatórios', 'Informe nome e número'); return; }
     setSaving(true);
+
+    if (document?.id) {
+      const f = frontUri ? await saveImageToLocal(frontUri) : (document.frontImageUri || '');
+      const b = backUri ? await saveImageToLocal(backUri) : (document.backImageUri || '');
+      await updateDocument(document.id, { name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0 });
+      setSaving(false);
+      try {
+        await syncDocumentAddOrUpdate({ id: document.id, name, number, frontImageUri: f, backImageUri: b }, userId);
+      } catch {}
+      onSaved();
+      return;
+    }
+
     const f = frontUri ? await saveImageToLocal(frontUri) : '';
     const b = backUri ? await saveImageToLocal(backUri) : '';
     const id = await addDocument({ name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0 });

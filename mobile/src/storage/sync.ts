@@ -14,6 +14,7 @@ async function uploadImage(path: string, userId: string): Promise<string> {
 }
 
 export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string) {
+  if (!userId || userId === 'anonymous') return;
   try {
     const frontPath = item.frontImageUri ? await uploadImage(item.frontImageUri, userId) : '';
     const backPath = item.backImageUri ? await uploadImage(item.backImageUri, userId) : '';
@@ -40,6 +41,7 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
 }
 
 export async function syncDocumentDelete(id: number, userId: string) {
+  if (!userId || userId === 'anonymous') return;
   try {
     const res = await fetch(`${API_BASE}/.netlify/functions/sync-document`, {
       method: 'DELETE',

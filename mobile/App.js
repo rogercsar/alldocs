@@ -53,14 +53,14 @@ export default function App() {
           )}
         </Stack.Screen>
         <Stack.Screen name="Edit" options={{ title: 'Adicionar Documento' }}>
-          {(props) => <EditDocumentScreen onSaved={() => props.navigation.navigate('Dashboard')} userId={userId} />}
+          {(props) => <EditDocumentScreen onSaved={() => props.navigation.navigate('Dashboard')} userId={userId} document={props.route.params?.doc} />}
         </Stack.Screen>
         <Stack.Screen name="View" options={{ title: 'Documento' }}>
           {(props) => (
             <ViewDocumentScreen
               document={props.route.params.doc}
               userId={userId}
-              onBack={() => props.navigation.goBack()}
+              onEdit={() => props.navigation.navigate('Edit', { doc: props.route.params.doc })}
               onDeleted={() => props.navigation.navigate('Dashboard')}
             />
           )}
