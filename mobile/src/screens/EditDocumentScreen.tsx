@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Image, Alert, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { addDocument, updateDocument, saveImageToLocal } from '../storage/db';
 import { supabase } from '../supabase';
 import { syncDocumentAddOrUpdate } from '../storage/sync';
+import type { DocumentItem } from '../types';
 
 const primaryColor = '#4F46E5';
 const bgColor = '#F3F4F6';

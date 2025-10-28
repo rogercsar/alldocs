@@ -46,16 +46,35 @@ export default function OnboardingScreen({ onDone }: Props) {
     setErrors({ email: emailErr, password: passErr });
     if (emailErr || passErr) return;
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) Alert.alert('Erro', error.message);
-    else onDone();
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        const msg = String(error.message || '');
+        // Fallback: se login por senha estiver desativado, usa OTP (magic link)
+        if (msg.toLowerCase().includes('disabled')) {
+          const redirectTo = process.env.EXPO_PUBLIC_LOGIN_REDIRECT || process.env.EXPO_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : undefined);
+          const { error: otpError } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: redirectTo } });
+          if (otpError) {
+            Alert.alert('Erro', otpError.message);
+          } else {
+            Alert.alert('Verifique seu e-mail', 'Enviamos um link de login para seu e-mail.');
+          }
+        } else {
+          Alert.alert('Erro', error.message);
+        }
+      } else {
+        onDone();
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function forgotPassword() {
     if (!email) { Alert.alert('Informe seu e-mail', 'Preencha o campo e-mail para enviar o link de recuperação.'); return; }
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: process.env.EXPO_PUBLIC_RESET_REDIRECT || undefined });
+    const redirectToReset = process.env.EXPO_PUBLIC_RESET_REDIRECT || process.env.EXPO_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : undefined);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectToReset });
     setLoading(false);
     if (error) Alert.alert('Erro', error.message);
     else Alert.alert('Verifique seu e-mail', 'Enviamos um link para redefinir sua senha.');

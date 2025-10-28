@@ -16,10 +16,10 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
     initDb();
     const [items, cnt] = await Promise.all([getDocuments(), countDocuments()]);
 
-    const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || '';
+    const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
     let isPremium = false;
     try {
-      if (base) {
+      if (base && userId && userId !== 'anonymous') {
         const res = await fetch(`${base}/.netlify/functions/get-user-status?userId=${userId}`);
         if (res.ok) {
           const json = await res.json();
@@ -30,41 +30,43 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
 
     // Tenta carregar documentos remotos do Supabase
     try {
-      const { data: remote, error } = await supabase
-        .from('documents')
-        .select('app_id,name,number,front_path,back_path,updated_at')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false });
+      if (userId && userId !== 'anonymous') {
+        const { data: remote, error } = await supabase
+          .from('documents')
+          .select('app_id,name,number,front_path,back_path,updated_at')
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false });
 
-      if (!error && remote && remote.length > 0) {
-        const mapped: DocumentItem[] = await Promise.all(
-          remote.map(async (d: any) => {
-            let front = '';
-            let back = '';
-            if (base) {
-              try {
-                const r = await fetch(`${base}/.netlify/functions/signed-urls?userId=${userId}&appId=${d.app_id}`);
-                if (r.ok) {
-                  const j = await r.json();
-                  front = j.frontSignedUrl || '';
-                  back = j.backSignedUrl || '';
-                }
-              } catch {}
-            }
-            return {
-              id: d.app_id,
-              name: d.name,
-              number: d.number,
-              frontImageUri: front,
-              backImageUri: back,
-              synced: 1,
-              updatedAt: d.updated_at ? new Date(d.updated_at).getTime() : undefined,
-            } as DocumentItem;
-          })
-        );
-        setDocs(mapped);
-        setLimitReached(!isPremium && mapped.length >= 4);
-        return;
+        if (!error && remote && remote.length > 0) {
+          const mapped: DocumentItem[] = await Promise.all(
+            remote.map(async (d: any) => {
+              let front = '';
+              let back = '';
+              if (base) {
+                try {
+                  const r = await fetch(`${base}/.netlify/functions/signed-urls?userId=${userId}&appId=${d.app_id}`);
+                  if (r.ok) {
+                    const j = await r.json();
+                    front = j.frontSignedUrl || '';
+                    back = j.backSignedUrl || '';
+                  }
+                } catch {}
+              }
+              return {
+                id: d.app_id,
+                name: d.name,
+                number: d.number,
+                frontImageUri: front,
+                backImageUri: back,
+                synced: 1,
+                updatedAt: d.updated_at ? new Date(d.updated_at).getTime() : undefined,
+              } as DocumentItem;
+            })
+          );
+          setDocs(mapped);
+          setLimitReached(!isPremium && mapped.length >= 4);
+          return;
+        }
       }
     } catch (e) {
       console.warn('Falha ao carregar documentos remotos', e);

@@ -13,19 +13,28 @@ exports.handler = async function(event) {
   }
   try {
     const { userId } = event.queryStringParameters || {};
-    if (!userId) return json({ error: 'Missing userId' }, 400);
+    if (!userId || userId === 'anonymous') {
+      return json({ id: userId || null, is_premium: false }, 200);
+    }
 
     const { data, error } = await supabase
       .from('user_profiles')
       .select('id, is_premium')
       .eq('id', userId)
       .single();
-    if (error) throw error;
 
-    return json({ id: data.id, is_premium: !!data.is_premium });
+    if (error) {
+      // If user profile does not exist yet, treat as non-premium
+      if (error.message && /no rows|No rows|0 rows/i.test(error.message)) {
+        return json({ id: userId, is_premium: false }, 200);
+      }
+      return json({ error: error.message }, 500);
+    }
+
+    return json({ id: data?.id || userId, is_premium: !!data?.is_premium });
   } catch (e) {
     console.error(e);
-    return json({ error: e.message }, 500);
+    return json({ error: e.message || String(e) }, 500);
   }
 };
 
