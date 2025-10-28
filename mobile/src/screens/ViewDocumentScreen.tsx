@@ -4,26 +4,35 @@ import { Ionicons } from '@expo/vector-icons';
 import { deleteDocument } from '../storage/db';
 import { syncDocumentDelete } from '../storage/sync';
 import type { DocumentItem } from '../types';
+import { Platform } from 'react-native';
 
 const primaryColor = '#4F46E5';
 const dangerColor = '#EF4444';
 const bgColor = '#F3F4F6';
 
-const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Outros'] as const;
+const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Outros'] as const;
 type DocType = typeof DOC_TYPES[number];
 
 function getViewTemplate(type: DocType) {
   switch (type) {
     case 'RG':
-      return { accentColor: '#10B981', numberLabel: 'Número do RG', frontLabel: 'Frente RG', backLabel: 'Verso RG', layout: 'sideBySide' as const };
+      return { accentColor: '#10B981', icon: 'person', numberLabel: 'Número do RG', frontLabel: 'Frente RG', backLabel: 'Verso RG', layout: 'sideBySide' as const };
     case 'CNH':
-      return { accentColor: '#F59E0B', numberLabel: 'Número da CNH', frontLabel: 'Frente CNH', backLabel: 'Verso CNH', layout: 'vertical' as const };
+      return { accentColor: '#F59E0B', icon: 'car', numberLabel: 'Número da CNH', frontLabel: 'Frente CNH', backLabel: 'Verso CNH', layout: 'vertical' as const };
     case 'CPF':
-      return { accentColor: '#3B82F6', numberLabel: 'CPF', frontLabel: 'Frente CPF', backLabel: 'Verso CPF', layout: 'vertical' as const };
+      return { accentColor: '#3B82F6', icon: 'person', numberLabel: 'CPF', frontLabel: 'Frente CPF', backLabel: 'Verso CPF', layout: 'vertical' as const };
     case 'Passaporte':
-      return { accentColor: '#8B5CF6', numberLabel: 'Número do Passaporte', frontLabel: 'Frente Passaporte', backLabel: 'Verso Passaporte', layout: 'vertical' as const };
+      return { accentColor: '#8B5CF6', icon: 'airplane', numberLabel: 'Número do Passaporte', frontLabel: 'Frente Passaporte', backLabel: 'Verso Passaporte', layout: 'vertical' as const };
+    case 'Comprovante de endereço':
+      return { accentColor: '#0EA5E9', icon: 'home', numberLabel: 'Identificador', frontLabel: 'Frente Comprovante', backLabel: 'Verso Comprovante', layout: 'vertical' as const };
+    case 'Documento do veículo':
+      return { accentColor: '#22C55E', icon: 'car', numberLabel: 'Placa/RENAVAM', frontLabel: 'Frente Doc Veículo', backLabel: 'Verso Doc Veículo', layout: 'vertical' as const };
+    case 'Cartões':
+      return { accentColor: '#EF4444', icon: 'wallet', numberLabel: 'Número do Cartão', frontLabel: 'Frente Cartão', backLabel: 'Verso Cartão', layout: 'vertical' as const };
+    case 'Certidões':
+      return { accentColor: '#A855F7', icon: 'ribbon', numberLabel: 'Número do Registro', frontLabel: 'Frente Certidão', backLabel: 'Verso Certidão', layout: 'vertical' as const };
     default:
-      return { accentColor: '#6B7280', numberLabel: 'Número do Documento', frontLabel: 'Frente', backLabel: 'Verso', layout: 'vertical' as const };
+      return { accentColor: '#6B7280', icon: 'document-text', numberLabel: 'Número do Documento', frontLabel: 'Frente', backLabel: 'Verso', layout: 'vertical' as const };
   }
 }
 
@@ -88,7 +97,7 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827', marginRight: 8 }}>{document.name}</Text>
           <View style={{ borderWidth: 1, borderColor: template.accentColor, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 9999, flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name={type === 'CNH' ? 'car' : type === 'Passaporte' ? 'airplane' : type === 'Outros' ? 'document-text' : 'person'} size={16} color={template.accentColor} style={{ marginRight: 6 }} />
+            <Ionicons name={template.icon as any} size={16} color={template.accentColor} style={{ marginRight: 6 }} />
             <Text style={{ color: template.accentColor, fontWeight: '700' }}>{type}</Text>
           </View>
         </View>
@@ -101,6 +110,12 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
             <Ionicons name='pencil' size={18} color={primaryColor} style={{ marginRight: 6 }} />
             <Text style={{ color: primaryColor, fontWeight: '700' }}>Editar</Text>
           </TouchableOpacity>
+          {Platform.OS === 'web' ? (
+            <TouchableOpacity onPress={() => exportAsPDF(document.name, document.frontImageUri, document.backImageUri)} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name='download' size={18} color={primaryColor} style={{ marginRight: 6 }} />
+              <Text style={{ color: primaryColor, fontWeight: '700' }}>Salvar PDF</Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity onPress={remove} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: dangerColor, flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name='trash' size={18} color='#fff' style={{ marginRight: 6 }} />
             <Text style={{ color: '#fff', fontWeight: '700' }}>Excluir</Text>
@@ -119,7 +134,7 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
             <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.frontLabel}</Text>
             <View style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: '#F9FAFB', position:'relative' }}>
               <View style={{ position:'absolute', top:8, left:8, backgroundColor: template.accentColor, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
-                <Ionicons name={type === 'CNH' ? 'car' : type === 'Passaporte' ? 'airplane' : type === 'Outros' ? 'document-text' : 'person'} size={14} color='#fff' style={{ marginRight: 6 }} />
+                <Ionicons name={template.icon as any} size={14} color='#fff' style={{ marginRight: 6 }} />
                 <Text style={{ color:'#fff', fontWeight:'700' }}>{template.frontLabel}</Text>
               </View>
               <Image source={{ uri: document.frontImageUri }} style={{ height: 200 }} resizeMode='contain' />
@@ -129,7 +144,7 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
             <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.backLabel}</Text>
             <View style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: '#F9FAFB', position:'relative' }}>
               <View style={{ position:'absolute', top:8, left:8, backgroundColor: template.accentColor, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
-                <Ionicons name={type === 'CNH' ? 'car' : type === 'Passaporte' ? 'airplane' : type === 'Outros' ? 'document-text' : 'person'} size={14} color='#fff' style={{ marginRight: 6 }} />
+                <Ionicons name={template.icon as any} size={14} color='#fff' style={{ marginRight: 6 }} />
                 <Text style={{ color:'#fff', fontWeight:'700' }}>{template.backLabel}</Text>
               </View>
               <Image source={{ uri: document.backImageUri }} style={{ height: 200 }} resizeMode='contain' />
@@ -143,7 +158,7 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
               <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.frontLabel}</Text>
               <View style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: '#F9FAFB', position:'relative' }}>
                 <View style={{ position:'absolute', top:8, left:8, backgroundColor: template.accentColor, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
-                  <Ionicons name={type === 'CNH' ? 'car' : type === 'Passaporte' ? 'airplane' : type === 'Outros' ? 'document-text' : 'person'} size={14} color='#fff' style={{ marginRight: 6 }} />
+                  <Ionicons name={template.icon as any} size={14} color='#fff' style={{ marginRight: 6 }} />
                   <Text style={{ color:'#fff', fontWeight:'700' }}>{template.frontLabel}</Text>
                 </View>
                 <Image source={{ uri: document.frontImageUri }} style={{ height: 220 }} resizeMode='contain' />
@@ -155,7 +170,7 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
               <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.backLabel}</Text>
               <View style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: '#F9FAFB', position:'relative' }}>
                 <View style={{ position:'absolute', top:8, left:8, backgroundColor: template.accentColor, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
-                  <Ionicons name={type === 'CNH' ? 'car' : type === 'Passaporte' ? 'airplane' : type === 'Outros' ? 'document-text' : 'person'} size={14} color='#fff' style={{ marginRight: 6 }} />
+                  <Ionicons name={template.icon as any} size={14} color='#fff' style={{ marginRight: 6 }} />
                   <Text style={{ color:'#fff', fontWeight:'700' }}>{template.backLabel}</Text>
                 </View>
                 <Image source={{ uri: document.backImageUri }} style={{ height: 220 }} resizeMode='contain' />
@@ -166,4 +181,42 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
       )}
     </ScrollView>
   );
+}
+
+// Botões de exportação para PDF (web)
+async function exportAsPDF(title: string, frontUri?: string, backUri?: string) {
+  if (Platform.OS !== 'web') return;
+  const jsPDF = (await import('jspdf')).default;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text(title || 'Documento', 10, 20);
+  let y = 30;
+  if (frontUri) {
+    try {
+      const img = await fetch(frontUri).then(r => r.blob());
+      const reader = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result as string);
+        fr.onerror = reject;
+        fr.readAsDataURL(img);
+      });
+      doc.addImage(reader, 'JPEG', 10, y, 180, 0);
+      y += 100;
+    } catch {}
+  }
+  if (backUri) {
+    try {
+      const img = await fetch(backUri).then(r => r.blob());
+      const reader = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result as string);
+        fr.onerror = reject;
+        fr.readAsDataURL(img);
+      });
+      doc.addImage(reader, 'JPEG', 10, y, 180, 0);
+    } catch {}
+  }
+
+  doc.save(`${title || 'documento'}.pdf`);
 }

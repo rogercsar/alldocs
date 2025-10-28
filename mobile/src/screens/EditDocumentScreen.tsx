@@ -10,7 +10,7 @@ import type { DocumentItem } from '../types';
 const primaryColor = '#4F46E5';
 const bgColor = '#F3F4F6';
 
-const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Outros'] as const;
+const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Outros'] as const;
 
 function getTemplate(type: typeof DOC_TYPES[number]) {
   switch (type) {
@@ -22,6 +22,14 @@ function getTemplate(type: typeof DOC_TYPES[number]) {
       return { numberLabel: 'CPF', frontLabel: 'Foto (Frente CPF)', backLabel: 'Foto (Verso CPF)' };
     case 'Passaporte':
       return { numberLabel: 'Número do Passaporte', frontLabel: 'Foto (Frente Passaporte)', backLabel: 'Foto (Verso Passaporte)' };
+    case 'Comprovante de endereço':
+      return { numberLabel: 'Identificador', frontLabel: 'Foto (Frente Comprovante)', backLabel: 'Foto (Verso Comprovante)' };
+    case 'Documento do veículo':
+      return { numberLabel: 'Placa/RENAVAM', frontLabel: 'Foto (Frente Doc Veículo)', backLabel: 'Foto (Verso Doc Veículo)' };
+    case 'Cartões':
+      return { numberLabel: 'Número do Cartão', frontLabel: 'Foto (Frente Cartão)', backLabel: 'Foto (Verso Cartão)' };
+    case 'Certidões':
+      return { numberLabel: 'Número do Registro', frontLabel: 'Foto (Frente Certidão)', backLabel: 'Foto (Verso Certidão)' };
     default:
       return { numberLabel: 'Número do Documento', frontLabel: 'Foto (Frente)', backLabel: 'Foto (Verso)' };
   }
@@ -46,11 +54,15 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
   const template = getTemplate(docType);
 
   async function pick(setter: (uri: string) => void) {
-    const res = await ImagePicker.launchImageLibraryAsync({ selectionLimit: 1, mediaTypes: [ImagePicker.MediaType.Image], quality: 0.9 });
+    const res = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: false, mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
     if (!res.canceled && res.assets?.[0]?.uri) setter(res.assets[0].uri);
   }
 
   async function capture(setter: (uri: string) => void) {
+    if (Platform.OS === 'web') {
+      // No web, câmera abre seletor de arquivo; usar galeria para consistência
+      return pick(setter);
+    }
     const res = await ImagePicker.launchCameraAsync({ quality: 0.9 });
     if (!res.canceled && res.assets?.[0]?.uri) setter(res.assets[0].uri);
   }

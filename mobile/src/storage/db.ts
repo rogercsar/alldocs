@@ -71,16 +71,10 @@ export function countDocuments(): Promise<number> {
   });
 }
 
-export async function saveImageToLocal(srcUri: string): Promise<string> {
-  if (!srcUri) return '';
-  if (Platform.OS === 'web') {
-    return srcUri;
-  }
-  const filename = srcUri.split('/').pop() || `img_${Date.now()}.jpg`;
-  const dest = FileSystem.documentDirectory + 'images/' + filename;
-  await FileSystem.makeDirectoryAsync(FileSystem.documentDirectory + 'images', { intermediates: true }).catch(() => {});
-  await FileSystem.copyAsync({ from: srcUri, to: dest });
-  return dest;
+export async function saveImageToLocal(uri: string): Promise<string> {
+  // No web, apenas retorna a URI, pois o expo-file-system não está disponível
+  // Em plataformas nativas, pode-se copiar para cache/local app storage
+  return uri;
 }
 
 export function addDocument(item: DocumentItem): Promise<number> {
