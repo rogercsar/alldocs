@@ -1,0 +1,19 @@
+[build]
+  functions = "netlify/functions"
+  command = ""
+  publish = "mobile/web-build"
+
+[functions]
+  node_bundler = "esbuild"
+
+[template.environment]
+  SUPABASE_URL = ""
+  SUPABASE_SERVICE_ROLE_KEY = ""
+  SUPABASE_BUCKET = "documents"
+  MP_ACCESS_TOKEN = ""
+  MP_PUBLIC_KEY = ""
+  WEBHOOK_URL = ""
+  SUCCESS_URL = ""
+  FAILURE_URL = ""
+  PENDING_URL = ""
+  URL = ""
