@@ -9,7 +9,20 @@ const dangerColor = '#EF4444';
 const bgColor = '#F3F4F6';
 
 export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId }: { document: any; onEdit: () => void; onDeleted: () => void; userId: string }) {
+  if (!document) {
+    return (
+      <View style={{ flex:1, alignItems:'center', justifyContent:'center', padding:16, backgroundColor: bgColor }}>
+        <Ionicons name='alert-circle' size={48} color='#6B7280' style={{ marginBottom:12 }} />
+        <Text style={{ fontSize:18, fontWeight:'700', color:'#111827', marginBottom:8 }}>Documento não encontrado</Text>
+        <TouchableOpacity onPress={onDeleted} style={{ backgroundColor: primaryColor, paddingVertical:12, paddingHorizontal:18, borderRadius:12, flexDirection:'row', alignItems:'center' }}>
+          <Ionicons name='arrow-back' size={18} color='#fff' style={{ marginRight:6 }} />
+          <Text style={{ color:'#fff', fontWeight:'700' }}>Voltar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
   async function remove() {
+    if (!document?.id) return;
     await deleteDocument(document.id);
     try { await syncDocumentDelete(document.id, userId); } catch {}
     onDeleted();

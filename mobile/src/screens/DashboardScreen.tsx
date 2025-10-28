@@ -3,21 +3,22 @@ import { View, Text, FlatList, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getDocuments, initDb, countDocuments } from '../storage/db';
 import type { DocumentItem } from '../types';
+import { supabase } from '../supabase';
 
 const primaryColor = '#4F46E5';
 const bgColor = '#F3F4F6';
 
-export default function DashboardScreen({ onAdd, onOpen, onUpgrade, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; userId: string; }) {
+export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; onLogout?: () => void; userId: string; }) {
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [limitReached, setLimitReached] = useState(false);
 
   const load = useCallback(async () => {
     initDb();
     const [items, cnt] = await Promise.all([getDocuments(), countDocuments()]);
-    setDocs(items);
+
+    const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || '';
+    let isPremium = false;
     try {
-      const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || '';
-      let isPremium = false;
       if (base) {
         const res = await fetch(`${base}/.netlify/functions/get-user-status?userId=${userId}`);
         if (res.ok) {
@@ -25,15 +26,63 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, userId }: { 
           isPremium = !!json?.is_premium;
         }
       }
-      setLimitReached(!isPremium && cnt >= 4);
-    } catch {
-      setLimitReached(cnt >= 4);
+    } catch {}
+
+    // Tenta carregar documentos remotos do Supabase
+    try {
+      const { data: remote, error } = await supabase
+        .from('documents')
+        .select('app_id,name,number,front_path,back_path,updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+
+      if (!error && remote && remote.length > 0) {
+        const mapped: DocumentItem[] = await Promise.all(
+          remote.map(async (d: any) => {
+            let front = '';
+            let back = '';
+            if (base) {
+              try {
+                const r = await fetch(`${base}/.netlify/functions/signed-urls?userId=${userId}&appId=${d.app_id}`);
+                if (r.ok) {
+                  const j = await r.json();
+                  front = j.frontSignedUrl || '';
+                  back = j.backSignedUrl || '';
+                }
+              } catch {}
+            }
+            return {
+              id: d.app_id,
+              name: d.name,
+              number: d.number,
+              frontImageUri: front,
+              backImageUri: back,
+              synced: 1,
+              updatedAt: d.updated_at ? new Date(d.updated_at).getTime() : undefined,
+            } as DocumentItem;
+          })
+        );
+        setDocs(mapped);
+        setLimitReached(!isPremium && mapped.length >= 4);
+        return;
+      }
+    } catch (e) {
+      console.warn('Falha ao carregar documentos remotos', e);
     }
+
+    // Fallback para documentos locais
+    setDocs(items);
+    setLimitReached(!isPremium && cnt >= 4);
   }, [userId]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const logout = async () => {
+    try { await supabase.auth.signOut(); } catch {}
+    onLogout?.();
+  };
 
   const renderItem = ({ item }: { item: DocumentItem }) => (
     <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:2 }}>
@@ -46,10 +95,17 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, userId }: { 
     <View style={{ flex:1, backgroundColor: bgColor }}>
       <View style={{ paddingHorizontal:16, paddingTop:16, paddingBottom:8, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
         <Text style={{ fontSize: 22, fontWeight: '800', color:'#111827' }}>Meus Documentos</Text>
-        <TouchableOpacity onPress={load} style={{ borderWidth:2, borderColor: primaryColor, paddingVertical:8, paddingHorizontal:12, borderRadius:12, flexDirection:'row', alignItems:'center' }}>
-          <Ionicons name='refresh' size={18} color={primaryColor} style={{ marginRight:6 }} />
-          <Text style={{ color: primaryColor, fontWeight:'700' }}>Atualizar</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection:'row', alignItems:'center' }}>
+          <TouchableOpacity onPress={load} style={{ borderWidth:2, borderColor: primaryColor, paddingVertical:8, paddingHorizontal:12, borderRadius:12, flexDirection:'row', alignItems:'center' }}>
+            <Ionicons name='refresh' size={18} color={primaryColor} style={{ marginRight:6 }} />
+            <Text style={{ color: primaryColor, fontWeight:'700' }}>Atualizar</Text>
+          </TouchableOpacity>
+          <View style={{ width:8 }} />
+          <TouchableOpacity onPress={logout} style={{ borderWidth:2, borderColor: '#EF4444', paddingVertical:8, paddingHorizontal:12, borderRadius:12, flexDirection:'row', alignItems:'center' }}>
+            <Ionicons name='log-out' size={18} color={'#EF4444'} style={{ marginRight:6 }} />
+            <Text style={{ color: '#EF4444', fontWeight:'700' }}>Sair</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {limitReached && (

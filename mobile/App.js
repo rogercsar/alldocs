@@ -47,6 +47,7 @@ export default function App() {
               onAdd={() => props.navigation.navigate('Edit')}
               onOpen={(doc) => props.navigation.navigate('View', { doc })}
               onUpgrade={() => props.navigation.navigate('Upgrade')}
+              onLogout={() => supabase.auth.signOut().then(() => props.navigation.replace('Onboarding'))}
               userId={userId}
             />
           )}
@@ -57,7 +58,7 @@ export default function App() {
         <Stack.Screen name="View" options={{ title: 'Documento' }}>
           {(props) => (
             <ViewDocumentScreen
-              doc={props.route.params.doc}
+              document={props.route.params.doc}
               userId={userId}
               onBack={() => props.navigation.goBack()}
               onDeleted={() => props.navigation.navigate('Dashboard')}

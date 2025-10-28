@@ -31,7 +31,10 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
       }),
     });
     if (!res.ok) throw new Error('Failed to sync');
-  } catch (e) {
+  } catch (e: any) {
+    if (e?.message?.includes('Bucket not found')) {
+      console.warn(`Storage bucket '${STORAGE_BUCKET}' não existe no projeto Supabase atual. Crie o bucket ou atualize EXPO_PUBLIC_SUPABASE_BUCKET.`);
+    }
     console.warn('Sync failed, will retry later', e);
   }
 }

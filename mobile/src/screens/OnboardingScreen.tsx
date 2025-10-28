@@ -108,16 +108,18 @@ export default function OnboardingScreen({ onDone }: Props) {
             <Text style={{ color: primaryColor, fontWeight:'600' }}>Esqueci minha senha</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={signUp} disabled={loading} style={{ backgroundColor: primaryColor, opacity: loading ? 0.7 : 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', flexDirection:'row', justifyContent:'center' }}>
-            <Ionicons name='person-add' size={18} color='#fff' style={{ marginRight:8 }} />
-            <Text style={{ color: '#fff', fontWeight: '700' }}>{loading ? 'Carregando...' : 'Criar Conta'}</Text>
+          {/* Entrar primeiro */}
+          <TouchableOpacity onPress={signIn} disabled={loading} style={{ backgroundColor: primaryColor, opacity: loading ? 0.7 : 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', flexDirection:'row', justifyContent:'center' }}>
+            <Ionicons name='log-in' size={18} color='#fff' style={{ marginRight:8 }} />
+            <Text style={{ color: '#fff', fontWeight: '700' }}>{loading ? 'Carregando...' : 'Entrar'}</Text>
           </TouchableOpacity>
 
           <View style={{ height: 10 }} />
 
-          <TouchableOpacity onPress={signIn} disabled={loading} style={{ borderWidth: 2, borderColor: primaryColor, paddingVertical: 12, borderRadius: 12, alignItems: 'center', flexDirection:'row', justifyContent:'center' }}>
-            <Ionicons name='log-in' size={18} color={primaryColor} style={{ marginRight:8 }} />
-            <Text style={{ color: primaryColor, fontWeight: '700' }}>{loading ? 'Carregando...' : 'Entrar'}</Text>
+          {/* Criar Conta depois */}
+          <TouchableOpacity onPress={signUp} disabled={loading} style={{ borderWidth: 2, borderColor: primaryColor, paddingVertical: 12, borderRadius: 12, alignItems: 'center', flexDirection:'row', justifyContent:'center' }}>
+            <Ionicons name='person-add' size={18} color={primaryColor} style={{ marginRight:8 }} />
+            <Text style={{ color: primaryColor, fontWeight: '700' }}>{loading ? 'Carregando...' : 'Criar Conta'}</Text>
           </TouchableOpacity>
         </View>
 

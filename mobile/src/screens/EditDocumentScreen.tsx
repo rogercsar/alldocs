@@ -9,12 +9,32 @@ import { syncDocumentAddOrUpdate } from '../storage/sync';
 const primaryColor = '#4F46E5';
 const bgColor = '#F3F4F6';
 
+const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Outros'] as const;
+
+function getTemplate(type: typeof DOC_TYPES[number]) {
+  switch (type) {
+    case 'RG':
+      return { numberLabel: 'Número do RG', frontLabel: 'Foto (Frente RG)', backLabel: 'Foto (Verso RG)' };
+    case 'CNH':
+      return { numberLabel: 'Número da CNH', frontLabel: 'Foto (Frente CNH)', backLabel: 'Foto (Verso CNH)' };
+    case 'CPF':
+      return { numberLabel: 'CPF', frontLabel: 'Foto (Frente CPF)', backLabel: 'Foto (Verso CPF)' };
+    case 'Passaporte':
+      return { numberLabel: 'Número do Passaporte', frontLabel: 'Foto (Frente Passaporte)', backLabel: 'Foto (Verso Passaporte)' };
+    default:
+      return { numberLabel: 'Número do Documento', frontLabel: 'Foto (Frente)', backLabel: 'Foto (Verso)' };
+  }
+}
+
 export default function EditDocumentScreen({ onSaved, userId }: { onSaved: () => void; userId: string }) {
   const [name, setName] = useState('');
   const [number, setNumber] = useState('');
   const [frontUri, setFrontUri] = useState<string | undefined>();
   const [backUri, setBackUri] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
+  const [docType, setDocType] = useState<typeof DOC_TYPES[number]>('RG');
+
+  const template = getTemplate(docType);
 
   async function pick(setter: (uri: string) => void) {
     const res = await ImagePicker.launchImageLibraryAsync({ selectionLimit: 1, mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
@@ -31,7 +51,7 @@ export default function EditDocumentScreen({ onSaved, userId }: { onSaved: () =>
     setSaving(true);
     const f = frontUri ? await saveImageToLocal(frontUri) : '';
     const b = backUri ? await saveImageToLocal(backUri) : '';
-    const id = await addDocument({ name, number, frontImageUri: f, backImageUri: b, synced: 0 });
+    const id = await addDocument({ name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0 });
     setSaving(false);
     try {
       await syncDocumentAddOrUpdate({ id, name, number, frontImageUri: f, backImageUri: b }, userId);
@@ -44,14 +64,26 @@ export default function EditDocumentScreen({ onSaved, userId }: { onSaved: () =>
       <ScrollView contentContainerStyle={{ padding:16 }}>
         <Text style={{ fontSize: 22, fontWeight:'800', color:'#111827', marginBottom:12 }}>Adicionar/Editar Documento</Text>
 
+        {/* Tipo de Documento */}
+        <View style={{ backgroundColor:'#fff', borderRadius:16, padding:12, borderWidth:1, borderColor:'#E5E7EB', shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:3, marginBottom:12 }}>
+          <Text style={{ fontSize: 14, color:'#374151', marginBottom: 8 }}>Tipo de Documento</Text>
+          <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
+            {DOC_TYPES.map((t) => (
+              <TouchableOpacity key={t} onPress={() => setDocType(t)} style={{ paddingVertical:8, paddingHorizontal:12, borderRadius:9999, borderWidth:1, borderColor: docType === t ? primaryColor : '#E5E7EB', backgroundColor: docType === t ? '#EEF2FF' : '#fff', marginRight:8, marginBottom:8 }}>
+                <Text style={{ color: docType === t ? primaryColor : '#374151', fontWeight:'600' }}>{t}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         <View style={{ backgroundColor:'#fff', borderRadius:16, padding:16, borderWidth:1, borderColor:'#E5E7EB', shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:3 }}>
           <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>Nome do Documento</Text>
-          <TextInput value={name} onChangeText={setName} placeholder='Ex.: RG, CNH, Passaporte' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:14 }} />
+          <TextInput value={name} onChangeText={setName} placeholder={`Ex.: ${docType}`} placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:14 }} />
 
-          <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>Número do Documento</Text>
+          <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.numberLabel}</Text>
           <TextInput value={number} onChangeText={setNumber} placeholder='Ex.: 123456789' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:16 }} />
 
-          <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>Foto (Frente)</Text>
+          <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.frontLabel}</Text>
           {frontUri ? (
             <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, overflow:'hidden', marginBottom:8 }}>
               <Image source={{ uri: frontUri }} style={{ height:160 }} resizeMode='contain'/>
@@ -68,7 +100,7 @@ export default function EditDocumentScreen({ onSaved, userId }: { onSaved: () =>
             </TouchableOpacity>
           </View>
 
-          <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>Foto (Verso)</Text>
+          <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.backLabel}</Text>
           {backUri ? (
             <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, overflow:'hidden', marginBottom:8 }}>
               <Image source={{ uri: backUri }} style={{ height:160 }} resizeMode='contain'/>

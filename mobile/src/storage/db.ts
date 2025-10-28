@@ -22,10 +22,13 @@ export function initDb() {
         number TEXT NOT NULL,
         frontImageUri TEXT,
         backImageUri TEXT,
+        type TEXT,
         synced INTEGER DEFAULT 0,
         updatedAt INTEGER
       );`
     );
+    // tenta adicionar coluna 'type' em bases existentes
+    tx.executeSql('ALTER TABLE documents ADD COLUMN type TEXT;', [], () => {}, () => false);
   });
 }
 
@@ -91,8 +94,8 @@ export function addDocument(item: DocumentItem): Promise<number> {
     const now = Date.now();
     db.transaction(tx => {
       tx.executeSql(
-        'INSERT INTO documents (name, number, frontImageUri, backImageUri, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?);',
-        [item.name, item.number, item.frontImageUri || '', item.backImageUri || '', item.synced ? 1 : 0, now],
+        'INSERT INTO documents (name, number, frontImageUri, backImageUri, type, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?);',
+        [item.name, item.number, item.frontImageUri || '', item.backImageUri || '', item.type || 'Outros', item.synced ? 1 : 0, now],
         (_, result) => resolve(result.insertId as number),
         (_, err) => {
           reject(err);
@@ -115,8 +118,8 @@ export function updateDocument(id: number, item: Partial<DocumentItem>): Promise
     const now = Date.now();
     db.transaction(tx => {
       tx.executeSql(
-        'UPDATE documents SET name=?, number=?, frontImageUri=?, backImageUri=?, synced=?, updatedAt=? WHERE id=?;',
-        [item.name, item.number, item.frontImageUri || '', item.backImageUri || '', item.synced ? 1 : 0, now, id],
+        'UPDATE documents SET name=?, number=?, frontImageUri=?, backImageUri=?, type=?, synced=?, updatedAt=? WHERE id=?;',
+        [item.name, item.number, item.frontImageUri || '', item.backImageUri || '', item.type || 'Outros', item.synced ? 1 : 0, now, id],
         () => resolve(),
         (_, err) => {
           reject(err);
