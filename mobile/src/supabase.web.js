@@ -3,7 +3,12 @@ export const supabase = {
     getSession: async () => ({ data: { session: null } }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
     signOut: async () => {},
-    signUp: async (_params) => ({ data: null, error: { message: 'Auth indisponível no preview web' } }),
+    // Simula sucesso no cadastro para preview web
+    signUp: async (_params) => ({ data: { user: { id: 'web-demo' } }, error: null }),
+    // Adiciona métodos esperados pelo app no web
+    signInWithPassword: async (_params) => ({ data: { session: { user: { id: 'web-demo' } } }, error: null }),
+    signInWithOtp: async (_params) => ({ data: { user: { id: 'web-demo' } }, error: null }),
+    resetPasswordForEmail: async (_email, _opts) => ({ data: { ok: true }, error: null }),
   },
   storage: {
     from: (_bucket) => ({
