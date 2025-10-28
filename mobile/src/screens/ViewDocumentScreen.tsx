@@ -1,81 +1,58 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Button, Alert } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import type { DocumentItem } from '../types';
+import React from 'react';
+import { View, Text, Image, ScrollView, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { deleteDocument } from '../storage/db';
 import { syncDocumentDelete } from '../storage/sync';
-import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
-import { PinchGestureHandler } from 'react-native-gesture-handler';
-import { Image } from 'react-native';
 
-function ZoomableImage({ uri }: { uri?: string }) {
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  if (!uri) return null;
-  return (
-    <PinchGestureHandler
-      onGestureEvent={(e) => {
-        const s = Math.min(Math.max(e.nativeEvent.scale, 1), 4);
-        scale.value = s;
-      }}
-      onEnded={() => { scale.value = 1; }}
-    >
-      <Animated.View style={[{ width: '100%', height: 240, overflow: 'hidden' }, animatedStyle]}>
-        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode='contain' />
-      </Animated.View>
-    </PinchGestureHandler>
-  );
-}
+const primaryColor = '#4F46E5';
+const dangerColor = '#EF4444';
+const bgColor = '#F3F4F6';
 
-export default function ViewDocumentScreen({ doc, onBack, onDeleted, userId }: { doc: DocumentItem; onBack: () => void; onDeleted: () => void; userId: string; }) {
-  const [frontUri, setFrontUri] = useState<string | undefined>(doc.frontImageUri);
-  const [backUri, setBackUri] = useState<string | undefined>(doc.backImageUri);
-
-  useEffect(() => {
-    const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || '';
-    if (!base || !doc.id) return;
-    (async () => {
-      try {
-        const res = await fetch(`${base}/.netlify/functions/signed-urls?userId=${userId}&appId=${doc.id}`);
-        if (!res.ok) return;
-        const json = await res.json();
-        if (json?.frontSignedUrl) setFrontUri(json.frontSignedUrl);
-        if (json?.backSignedUrl) setBackUri(json.backSignedUrl);
-      } catch {}
-    })();
-  }, [userId, doc.id]);
-
-  async function copyNumber() {
-    await Clipboard.setStringAsync(doc.number);
-    Alert.alert('Copiado', 'Número copiado para a área de transferência.');
-  }
-
-  async function share() {
-    const message = `${doc.name} - ${doc.number}`;
-    await (await import('react-native')).Share.share({ message });
-  }
-
+export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId }: { document: any; onEdit: () => void; onDeleted: () => void; userId: string }) {
   async function remove() {
-    Alert.alert('Excluir', 'Confirma excluir este documento?', [
-      { text:'Cancelar', style:'cancel' },
-      { text:'Excluir', style:'destructive', onPress: async () => { await deleteDocument(doc.id!); try { await syncDocumentDelete(doc.id!, userId); } catch {} onDeleted(); } }
-    ]);
+    await deleteDocument(document.id);
+    try { await syncDocumentDelete(document.id, userId); } catch {}
+    onDeleted();
   }
 
   return (
-    <View style={{ flex:1, padding: 12 }}>
-      <Button title="Voltar" onPress={onBack} />
-      <Text style={{ fontSize:18, fontWeight:'bold', marginTop:8 }}>{doc.name}</Text>
-      <Text style={{ color:'#555', marginBottom:8 }}>{doc.number}</Text>
-      <View style={{ flexDirection:'row', gap:8, marginBottom:12 }}>
-        <Button title="Copiar Número" onPress={copyNumber} />
-        <Button title="Compartilhar" onPress={share} />
-        <Button title="Excluir" color="#ff3b30" onPress={remove} />
+    <ScrollView style={{ flex:1, backgroundColor: bgColor }} contentContainerStyle={{ padding:16 }}>
+      <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+        <Text style={{ fontSize:22, fontWeight:'800', color:'#111827' }}>{document.name}</Text>
+        <View style={{ flexDirection:'row', gap:8 }}>
+          <TouchableOpacity onPress={onEdit} style={{ paddingVertical:10, paddingHorizontal:12, borderRadius:12, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', flexDirection:'row', alignItems:'center' }}>
+            <Ionicons name='pencil' size={18} color={primaryColor} style={{ marginRight:6 }} />
+            <Text style={{ color: primaryColor, fontWeight:'700' }}>Editar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={remove} style={{ paddingVertical:10, paddingHorizontal:12, borderRadius:12, backgroundColor: dangerColor, flexDirection:'row', alignItems:'center' }}>
+            <Ionicons name='trash' size={18} color='#fff' style={{ marginRight:6 }} />
+            <Text style={{ color:'#fff', fontWeight:'700' }}>Excluir</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <ZoomableImage uri={frontUri} />
-      <View style={{ height: 8 }} />
-      <ZoomableImage uri={backUri} />
-    </View>
+      <View style={{ backgroundColor:'#fff', borderRadius:16, padding:16, borderWidth:1, borderColor:'#E5E7EB', shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:3, marginBottom:16 }}>
+        <Text style={{ fontSize:14, color:'#6B7280', marginBottom:8 }}>Número</Text>
+        <Text style={{ fontSize:18, fontWeight:'700', color:'#111827' }}>{document.number}</Text>
+      </View>
+
+      {document.frontImageUri ? (
+        <View style={{ backgroundColor:'#fff', borderRadius:16, padding:12, borderWidth:1, borderColor:'#E5E7EB', shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:3, marginBottom:16 }}>
+          <Text style={{ fontSize:14, color:'#6B7280', marginBottom:8 }}>Frente</Text>
+          <View style={{ borderRadius:12, overflow:'hidden', backgroundColor:'#F9FAFB' }}>
+            <Image source={{ uri: document.frontImageUri }} style={{ height:220 }} resizeMode='contain' />
+          </View>
+        </View>
+      ) : null}
+
+      {document.backImageUri ? (
+        <View style={{ backgroundColor:'#fff', borderRadius:16, padding:12, borderWidth:1, borderColor:'#E5E7EB', shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:3 }}>
+          <Text style={{ fontSize:14, color:'#6B7280', marginBottom:8 }}>Verso</Text>
+          <View style={{ borderRadius:12, overflow:'hidden', backgroundColor:'#F9FAFB' }}>
+            <Image source={{ uri: document.backImageUri }} style={{ height:220 }} resizeMode='contain' />
+          </View>
+        </View>
+      ) : null}
+    </ScrollView>
   );
 }
