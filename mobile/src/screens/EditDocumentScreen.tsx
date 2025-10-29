@@ -6,9 +6,10 @@ import { addDocument, updateDocument, saveImageToLocal } from '../storage/db';
 import { supabase } from '../supabase';
 import { syncDocumentAddOrUpdate } from '../storage/sync';
 import type { DocumentItem } from '../types';
+import { colors } from '../theme/colors';
 
-const primaryColor = '#4F46E5';
-const bgColor = '#F3F4F6';
+const primaryColor = colors.brandPrimary;
+const bgColor = colors.bg;
 
 const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Outros'] as const;
 

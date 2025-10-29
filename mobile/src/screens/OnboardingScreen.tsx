@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Alert, Image, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
+import { colors } from '../theme/colors';
 
 type Props = { onDone: () => void };
 
@@ -10,7 +11,15 @@ export default function OnboardingScreen({ onDone }: Props) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const primaryColor = '#4F46E5';
+  const primaryColor = colors.brandPrimary;
+  const bgColor = colors.bg;
+  const textColor = colors.text;
+  const mutedText = colors.mutedText;
+  const borderColor = colors.border;
+  const cardBg = colors.cardBg;
+  const surfaceColor = colors.surface;
+  const mutedIcon = colors.mutedIcon;
+  const dangerColor = colors.danger;
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   function validateEmail(value: string) {
@@ -81,16 +90,16 @@ export default function OnboardingScreen({ onDone }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#F3F4F6' }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: bgColor }}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
         <Image source={require('../../assets/icon.png')} style={{ width: 72, height: 72, borderRadius: 16, marginBottom: 12 }} />
-        <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827', marginBottom: 4 }}>EVDocs</Text>
-        <Text style={{ color: '#6B7280', marginBottom: 16, textAlign: 'center' }}>Entre para sincronizar e proteger seus documentos em todos os dispositivos.</Text>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: textColor, marginBottom: 4 }}>EVDocs</Text>
+        <Text style={{ color: mutedText, marginBottom: 16, textAlign: 'center' }}>Entre para sincronizar e proteger seus documentos em todos os dispositivos.</Text>
 
-        <View style={{ width: '100%', maxWidth: 420, backgroundColor: '#ffffff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
-          <Text style={{ fontSize: 14, color: '#374151', marginBottom: 6 }}>Email</Text>
-          <View style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, marginBottom:4, flexDirection:'row', alignItems:'center' }}>
-            <Ionicons name='mail' size={18} color='#6B7280' style={{ marginLeft:12, marginRight:8 }} />
+        <View style={{ width: '100%', maxWidth: 420, backgroundColor: cardBg, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+          <Text style={{ fontSize: 14, color: mutedText, marginBottom: 6 }}>Email</Text>
+          <View style={{ backgroundColor: surfaceColor, borderWidth:1, borderColor: borderColor, borderRadius:12, marginBottom:4, flexDirection:'row', alignItems:'center' }}>
+            <Ionicons name='mail' size={18} color={mutedIcon} style={{ marginLeft:12, marginRight:8 }} />
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -98,29 +107,29 @@ export default function OnboardingScreen({ onDone }: Props) {
               autoCapitalize='none'
               keyboardType='email-address'
               placeholder='seuemail@exemplo.com'
-              placeholderTextColor='#9CA3AF'
+              placeholderTextColor={mutedIcon}
               style={{ flex:1, paddingVertical:12, paddingHorizontal:12 }}
             />
           </View>
-          {errors.email ? <Text style={{ color:'#EF4444', fontSize:12, marginBottom:14 }}>{errors.email}</Text> : <View style={{ height:14 }} />}
+          {errors.email ? <Text style={{ color: dangerColor, fontSize:12, marginBottom:14 }}>{errors.email}</Text> : <View style={{ height:14 }} />}
 
-          <Text style={{ fontSize: 14, color: '#374151', marginBottom: 6 }}>Senha</Text>
-          <View style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, marginBottom:4, flexDirection:'row', alignItems:'center' }}>
-            <Ionicons name='lock-closed' size={18} color='#6B7280' style={{ marginLeft:12, marginRight:8 }} />
+          <Text style={{ fontSize: 14, color: mutedText, marginBottom: 6 }}>Senha</Text>
+          <View style={{ backgroundColor: surfaceColor, borderWidth:1, borderColor: borderColor, borderRadius:12, marginBottom:4, flexDirection:'row', alignItems:'center' }}>
+            <Ionicons name='lock-closed' size={18} color={mutedIcon} style={{ marginLeft:12, marginRight:8 }} />
             <TextInput
               value={password}
               onChangeText={setPassword}
               onBlur={() => setErrors((prev) => ({ ...prev, password: validatePassword(password) }))}
               secureTextEntry={!showPassword}
               placeholder='••••••••'
-              placeholderTextColor='#9CA3AF'
+              placeholderTextColor={mutedIcon}
               style={{ flex:1, paddingVertical:12, paddingHorizontal:12 }}
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ paddingHorizontal:12 }}>
-              <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color='#6B7280' />
+              <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={mutedIcon} />
             </TouchableOpacity>
           </View>
-          {errors.password ? <Text style={{ color:'#EF4444', fontSize:12, marginBottom:16 }}>{errors.password}</Text> : <View style={{ height:16 }} />}
+          {errors.password ? <Text style={{ color: dangerColor, fontSize:12, marginBottom:16 }}>{errors.password}</Text> : <View style={{ height:16 }} />}
 
           <TouchableOpacity onPress={forgotPassword} style={{ alignSelf:'flex-end', marginBottom:16, flexDirection:'row', alignItems:'center' }}>
             <Ionicons name='key' size={18} color={primaryColor} style={{ marginRight:6 }} />
@@ -143,7 +152,7 @@ export default function OnboardingScreen({ onDone }: Props) {
         </View>
 
         <View style={{ height: 24 }} />
-        <Text style={{ color: '#9CA3AF', fontSize: 12 }}>Ao continuar, você concorda com os Termos e a Política de Privacidade.</Text>
+        <Text style={{ color: mutedIcon, fontSize: 12 }}>Ao continuar, você concorda com os Termos e a Política de Privacidade.</Text>
       </View>
     </KeyboardAvoidingView>
   );

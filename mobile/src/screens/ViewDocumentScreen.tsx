@@ -5,10 +5,11 @@ import { deleteDocument } from '../storage/db';
 import { syncDocumentDelete } from '../storage/sync';
 import type { DocumentItem } from '../types';
 import { Platform } from 'react-native';
+import { colors } from '../theme/colors';
 
-const primaryColor = '#4F46E5';
-const dangerColor = '#EF4444';
-const bgColor = '#F3F4F6';
+const primaryColor = colors.brandPrimary;
+const dangerColor = colors.danger;
+const bgColor = colors.bg;
 
 const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Outros'] as const;
 type DocType = typeof DOC_TYPES[number];
@@ -94,34 +95,51 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
   return (
     <ScrollView style={{ flex: 1, backgroundColor: bgColor }} contentContainerStyle={{ padding: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827', marginRight: 8 }}>{document.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} ellipsizeMode='tail' style={{ fontSize: 22, fontWeight: '800', color: '#111827', marginRight: 8, flexShrink: 1 }}>{document.name}</Text>
           <View style={{ borderWidth: 1, borderColor: template.accentColor, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 9999, flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name={template.icon as any} size={16} color={template.accentColor} style={{ marginRight: 6 }} />
             <Text style={{ color: template.accentColor, fontWeight: '700' }}>{type}</Text>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={shareDoc} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name='share-social' size={18} color={primaryColor} style={{ marginRight: 6 }} />
-            <Text style={{ color: primaryColor, fontWeight: '700' }}>Compartilhar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => onEdit?.()} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name='pencil' size={18} color={primaryColor} style={{ marginRight: 6 }} />
-            <Text style={{ color: primaryColor, fontWeight: '700' }}>Editar</Text>
-          </TouchableOpacity>
-          {Platform.OS === 'web' ? (
+        {Platform.OS === 'web' ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={shareDoc} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name='share-social' size={18} color={primaryColor} style={{ marginRight: 6 }} />
+              <Text style={{ color: primaryColor, fontWeight: '700' }}>Compartilhar</Text>
+            </TouchableOpacity>
+            <View style={{ width: 8 }} />
+            <TouchableOpacity onPress={() => onEdit?.()} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name='pencil' size={18} color={primaryColor} style={{ marginRight: 6 }} />
+              <Text style={{ color: primaryColor, fontWeight: '700' }}>Editar</Text>
+            </TouchableOpacity>
+            <View style={{ width: 8 }} />
             <TouchableOpacity onPress={() => exportAsPDF(document.name, document.frontImageUri, document.backImageUri)} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name='download' size={18} color={primaryColor} style={{ marginRight: 6 }} />
               <Text style={{ color: primaryColor, fontWeight: '700' }}>Salvar PDF</Text>
             </TouchableOpacity>
-          ) : null}
-          <TouchableOpacity onPress={remove} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: dangerColor, flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name='trash' size={18} color='#fff' style={{ marginRight: 6 }} />
-            <Text style={{ color: '#fff', fontWeight: '700' }}>Excluir</Text>
-          </TouchableOpacity>
+            <View style={{ width: 8 }} />
+            <TouchableOpacity onPress={remove} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: dangerColor, flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name='trash' size={18} color='#fff' style={{ marginRight: 6 }} />
+              <Text style={{ color: '#fff', fontWeight: '700' }}>Excluir</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => onEdit?.()} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name='pencil' size={18} color={primaryColor} />
+            </TouchableOpacity>
+            <View style={{ width: 8 }} />
+            <TouchableOpacity onPress={() => exportAsPDF(document.name, document.frontImageUri, document.backImageUri)} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name='download' size={18} color={primaryColor} />
+            </TouchableOpacity>
+            <View style={{ width: 8 }} />
+            <TouchableOpacity onPress={remove} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: dangerColor, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name='trash' size={18} color='#fff' />
+            </TouchableOpacity>
+          </View>
+        )}
         </View>
-      </View>
 
       <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, marginBottom: 16 }}>
         <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.numberLabel}</Text>
@@ -185,7 +203,10 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
 
 // Botões de exportação para PDF (web)
 async function exportAsPDF(title: string, frontUri?: string, backUri?: string) {
-  if (Platform.OS !== 'web') return;
+  if (Platform.OS !== 'web') {
+    Alert.alert('Disponível apenas na Web', 'Para salvar PDF, acesse pelo navegador.');
+    return;
+  }
   const jsPDF = require('jspdf').default;
   const doc = new jsPDF();
 

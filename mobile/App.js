@@ -41,7 +41,7 @@ export default function App() {
             {(props) => <OnboardingScreen onDone={() => props.navigation.replace('Dashboard')} />}
           </Stack.Screen>
         ) : null}
-        <Stack.Screen name="Dashboard" options={{ title: 'AllDocs' }}>
+        <Stack.Screen name="Dashboard" options={{ headerShown: true }}>
           {(props) => (
             <DashboardScreen
               onAdd={() => props.navigation.navigate('Edit')}
