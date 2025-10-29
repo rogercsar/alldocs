@@ -92,9 +92,9 @@ export default function OnboardingScreen({ onDone }: Props) {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: bgColor }}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
-        <Image source={require('../../assets/icon.png')} style={{ width: 72, height: 72, borderRadius: 16, marginBottom: 12 }} />
-        <Text style={{ fontSize: 24, fontWeight: '800', color: textColor, marginBottom: 4 }}>EVDocs</Text>
-        <Text style={{ color: mutedText, marginBottom: 16, textAlign: 'center' }}>Entre para sincronizar e proteger seus documentos em todos os dispositivos.</Text>
+        <Image source={require('../../assets/icon.png')} style={{ width: 198, height: 198, borderRadius: 16, marginBottom: 6 }} />
+        <Text style={{ fontSize: 24, fontWeight: '800', color: textColor, marginBottom: 4 }}></Text>
+        <Text style={{ color: mutedText, marginBottom: 16, textAlign: 'center' }}>Sincronize e proteja seus documentos em todos dispositivos.</Text>
 
         <View style={{ width: '100%', maxWidth: 420, backgroundColor: cardBg, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
           <Text style={{ fontSize: 14, color: mutedText, marginBottom: 6 }}>Email</Text>

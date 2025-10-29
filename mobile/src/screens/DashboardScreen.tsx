@@ -125,7 +125,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
           {logoError ? (
             <Ionicons name='document-text' size={28} color={colors.text} />
           ) : (
-            <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:36, height:36 }} />
+            <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:116, height:116 }} />
           )}
         </View>
       ),
@@ -136,7 +136,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
             <Text style={{ color: primaryColor, fontWeight:'700' }}>Atualizar</Text>
           </TouchableOpacity>
           <View style={{ width:8 }} />
-          <TouchableOpacity onPress={logout} style={{ borderWidth:2, borderColor: dangerColor, paddingVertical:6, paddingHorizontal:10, borderRadius:10, flexDirection:'row', alignItems:'center' }}>
+          <TouchableOpacity onPress={logout} style={{ borderWidth:2, borderColor: dangerColor, paddingVertical:6, paddingHorizontal:10, borderRadius:10, marginRight:26, flexDirection:'row', alignItems:'center' }}>
             <Ionicons name='log-out' size={18} color={dangerColor} style={{ marginRight:6 }} />
             <Text style={{ color: dangerColor, fontWeight:'700' }}>Sair</Text>
           </TouchableOpacity>
