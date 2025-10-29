@@ -2,6 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const FREE_DEVICE_LIMIT = parseInt(process.env.FREE_DEVICE_LIMIT || '2', 10);
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Tabela esperada no Supabase:
@@ -22,8 +23,18 @@ exports.handler = async function(event) {
 
   try {
     if (event.httpMethod === 'GET') {
-      const { userId } = event.queryStringParameters || {};
+      const { userId, mode } = event.queryStringParameters || {};
       if (!userId) return json({ error: 'Missing userId' }, 400);
+
+      if (mode === 'list') {
+        const { data, error } = await supabase
+          .from('user_devices')
+          .select('device_id, platform, label, last_seen')
+          .eq('user_id', userId)
+          .order('last_seen', { ascending: false });
+        if (error) throw error;
+        return json({ devices: Array.isArray(data) ? data : [], count: Array.isArray(data) ? data.length : 0 }, 200);
+      }
 
       const { count, error } = await supabase
         .from('user_devices')
@@ -42,10 +53,63 @@ exports.handler = async function(event) {
       const label = body?.label || null;
       if (!userId || !deviceId) return json({ error: 'Missing userId or deviceId' }, 400);
 
+      // Verifica plano do usuário para limitar dispositivos no freemium
+      let isPremium = false;
+      try {
+        const { data: prof, error: profErr } = await supabase
+          .from('user_profiles')
+          .select('is_premium')
+          .eq('id', userId)
+          .limit(1);
+        if (profErr) throw profErr;
+        const row = Array.isArray(prof) ? prof[0] : prof;
+        isPremium = !!row?.is_premium;
+      } catch (e) {
+        // Se falhar a leitura do perfil, assume freemium para segurança
+        isPremium = false;
+      }
+
+      // Se freemium, impede registrar um novo dispositivo além do limite (mas permite atualizar o próprio)
+      if (!isPremium) {
+        const { data: existingRows, error: existErr } = await supabase
+          .from('user_devices')
+          .select('device_id')
+          .eq('user_id', userId)
+          .eq('device_id', deviceId)
+          .limit(1);
+        if (existErr) throw existErr;
+
+        const alreadyRegistered = Array.isArray(existingRows) && existingRows.length > 0;
+        const { count: currentCount, error: countErr } = await supabase
+          .from('user_devices')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId);
+        if (countErr) throw countErr;
+
+        if (!alreadyRegistered && (currentCount || 0) >= FREE_DEVICE_LIMIT) {
+          return json({ error: 'device_limit_reached', limit: FREE_DEVICE_LIMIT }, 409);
+        }
+      }
+
       const payload = { user_id: userId, device_id: deviceId, platform, label, last_seen: new Date().toISOString() };
       const { error } = await supabase
         .from('user_devices')
         .upsert(payload, { onConflict: 'user_id,device_id' });
+      if (error) throw error;
+      return json({ ok: true });
+    }
+
+    if (event.httpMethod === 'DELETE') {
+      if (!event.body) return json({ error: 'Missing body' }, 400);
+      const body = JSON.parse(event.body);
+      const userId = body?.userId;
+      const deviceId = body?.deviceId;
+      if (!userId || !deviceId) return json({ error: 'Missing userId or deviceId' }, 400);
+      const { error } = await supabase
+        .from('user_devices')
+        .delete()
+        .eq('user_id', userId)
+        .eq('device_id', deviceId);
       if (error) throw error;
       return json({ ok: true });
     }
@@ -65,6 +129,6 @@ function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
   };
 }
