@@ -21,17 +21,19 @@ exports.handler = async function(event) {
       .from('user_profiles')
       .select('id, is_premium')
       .eq('id', userId)
-      .single();
+      .limit(1);
 
     if (error) {
-      // If user profile does not exist yet, treat as non-premium
-      if (error.message && /no rows|No rows|0 rows/i.test(error.message)) {
-        return json({ id: userId, is_premium: false }, 200);
-      }
       return json({ error: error.message }, 500);
     }
 
-    return json({ id: data?.id || userId, is_premium: !!data?.is_premium });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) {
+      // Perfil ainda não existe, considerar não-premium
+      return json({ id: userId, is_premium: false }, 200);
+    }
+
+    return json({ id: row.id || userId, is_premium: !!row.is_premium });
   } catch (e) {
     console.error(e);
     return json({ error: e.message || String(e) }, 500);

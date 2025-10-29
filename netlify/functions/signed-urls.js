@@ -16,13 +16,18 @@ exports.handler = async function(event) {
     const appId = params.appId ? parseInt(params.appId, 10) : undefined;
     if (!userId || !appId) return json({ error: 'Missing userId or appId' }, 400);
 
-    const { data: doc, error } = await supabase
+    const { data, error } = await supabase
       .from('documents')
       .select('front_path, back_path')
       .eq('user_id', userId)
       .eq('app_id', appId)
-      .single();
+      .limit(1);
     if (error) throw error;
+
+    const doc = Array.isArray(data) ? data[0] : data;
+    if (!doc) {
+      return json({ frontSignedUrl: null, backSignedUrl: null }, 200);
+    }
 
     let frontSignedUrl = null;
     let backSignedUrl = null;
