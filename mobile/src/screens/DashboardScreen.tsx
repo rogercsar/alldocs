@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useLayoutEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable } from 'react-native';
+import React, { useEffect, useState, useCallback, useLayoutEffect, useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getDocuments, initDb, countDocuments, deleteDocument } from '../storage/db';
 import { syncDocumentDelete } from '../storage/sync';
@@ -11,6 +11,7 @@ import { colors } from '../theme/colors';
 const primaryColor = colors.brandPrimary;
 const bgColor = colors.bg;
 const dangerColor = colors.danger;
+
 
 function iconForType(type?: string): { name: keyof typeof Ionicons.glyphMap; color: string } {
   switch (type) {
@@ -40,6 +41,9 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const [limitReached, setLimitReached] = useState(false);
   const [menuFor, setMenuFor] = useState<number | null>(null);
   const [logoError, setLogoError] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const menuScale = useRef(new Animated.Value(0.95)).current;
+  const menuOpacity = useRef(new Animated.Value(0)).current;
 
   const load = useCallback(async () => {
     setMenuFor(null);
@@ -111,6 +115,17 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (headerMenuOpen) {
+      menuScale.setValue(0.95);
+      menuOpacity.setValue(0);
+      Animated.parallel([
+        Animated.timing(menuScale, { toValue: 1, duration: 140, useNativeDriver: true }),
+        Animated.timing(menuOpacity, { toValue: 1, duration: 140, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [headerMenuOpen]);
+
   const logout = async () => {
     try { await supabase.auth.signOut(); } catch {}
     onLogout?.();
@@ -131,14 +146,8 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
       ),
       headerRight: () => (
         <View style={{ flexDirection:'row', alignItems:'center' }}>
-          <TouchableOpacity onPress={load} style={{ borderWidth:2, borderColor: primaryColor, paddingVertical:6, paddingHorizontal:10, borderRadius:10, flexDirection:'row', alignItems:'center' }}>
-            <Ionicons name='refresh' size={18} color={primaryColor} style={{ marginRight:6 }} />
-            <Text style={{ color: primaryColor, fontWeight:'700' }}>Atualizar</Text>
-          </TouchableOpacity>
-          <View style={{ width:8 }} />
-          <TouchableOpacity onPress={logout} style={{ borderWidth:2, borderColor: dangerColor, paddingVertical:6, paddingHorizontal:10, borderRadius:10, marginRight:26, flexDirection:'row', alignItems:'center' }}>
-            <Ionicons name='log-out' size={18} color={dangerColor} style={{ marginRight:6 }} />
-            <Text style={{ color: dangerColor, fontWeight:'700' }}>Sair</Text>
+          <TouchableOpacity onPress={() => setHeaderMenuOpen(true)} style={{ paddingVertical:6, paddingHorizontal:10, marginRight: 10 }}>
+            <Ionicons name='ellipsis-vertical' size={22} color={colors.text} />
           </TouchableOpacity>
         </View>
       ),
@@ -253,6 +262,32 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
       {menuFor !== null && (
         <Pressable onPress={() => setMenuFor(null)} style={{ position:'absolute', left:0, right:0, top:0, bottom:0, zIndex:10 }} />
       )}
+      
+      {headerMenuOpen && (
+        <>
+          <Pressable onPress={() => setHeaderMenuOpen(false)} style={{ position:'absolute', left:0, right:0, top:0, bottom:0, zIndex:30, backgroundColor:'rgba(17,24,39,0.03)' }} />
+          <Animated.View style={{ position:'absolute', top: 8, right: 10, opacity: menuOpacity, transform:[{ scale: menuScale }], zIndex:40 }}>
+            <View style={{ position:'absolute', top:-6, right:16, width:12, height:12, backgroundColor:'#fff', transform:[{ rotate:'45deg' }], borderTopColor:'#E5E7EB', borderLeftColor:'#E5E7EB', borderTopWidth:1, borderLeftWidth:1 }} />
+            <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.12, shadowRadius:18, elevation:4, overflow:'hidden', minWidth: 220 }}>
+              <Pressable onPress={() => { setHeaderMenuOpen(false); load(); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#F9FAFB' : '#fff' })}>
+                <Ionicons name='refresh' size={18} color={primaryColor} style={{ marginRight:10 }} />
+                <Text style={{ fontSize:15, color: primaryColor, fontWeight:'700' }}>Atualizar</Text>
+              </Pressable>
+              <View style={{ height:1, backgroundColor:'#F3F4F6' }} />
+              <Pressable onPress={() => { setHeaderMenuOpen(false); navigation.navigate('Profile'); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#F9FAFB' : '#fff' })}>
+                <Ionicons name='person-circle' size={18} color={'#111827'} style={{ marginRight:10 }} />
+                <Text style={{ fontSize:15, color:'#111827', fontWeight:'700' }}>Perfil</Text>
+              </Pressable>
+              <View style={{ height:1, backgroundColor:'#F3F4F6' }} />
+              <Pressable onPress={() => { setHeaderMenuOpen(false); logout(); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#FEF2F2' : '#fff' })}>
+                <Ionicons name='log-out' size={18} color={dangerColor} style={{ marginRight:10 }} />
+                <Text style={{ fontSize:15, color: dangerColor, fontWeight:'700' }}>Sair</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </>
+      )}
+      
       <TouchableOpacity onPress={onAdd} style={{ position:'absolute', bottom:20, right:20, backgroundColor: primaryColor, paddingVertical:16, paddingHorizontal:18, borderRadius:30, shadowColor:'#000', shadowOpacity:0.15, shadowRadius:10, elevation:4, flexDirection:'row', alignItems:'center' }}>
         <Ionicons name='add' size={20} color='#fff' style={{ marginRight:6 }} />
         <Text style={{ color:'#fff', fontWeight:'800', fontSize:16 }}>Novo</Text>

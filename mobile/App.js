@@ -7,7 +7,13 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import EditDocumentScreen from './src/screens/EditDocumentScreen';
 import ViewDocumentScreen from './src/screens/ViewDocumentScreen';
 import UpgradeScreen from './src/screens/UpgradeScreen';
+import LandingScreen from './src/screens/LandingScreen';
+import PlansScreen from './src/screens/PlansScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import SignupScreen from './src/screens/SignupScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import { supabase } from './src/supabase';
+import { registerDeviceForUser } from './src/utils/device';
 
 const Stack = createNativeStackNavigator();
 
@@ -27,20 +33,42 @@ export default function App() {
     return () => { sub.subscription?.unsubscribe?.(); };
   }, []);
 
-  if (!unlocked) {
-    return <LockScreen onUnlocked={() => setUnlocked(true)} />;
-  }
+  useEffect(() => {
+    if (userId && userId !== 'anonymous') {
+      registerDeviceForUser(userId);
+    }
+  }, [userId]);
 
   if (!ready) return null;
 
+  const isAnonymous = !userId || userId === 'anonymous';
+  if (!isAnonymous && !unlocked) {
+    return <LockScreen onUnlocked={() => setUnlocked(true)} />;
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        {!userId || userId === 'anonymous' ? (
-          <Stack.Screen name="Onboarding" options={{ headerShown: false }}>
-            {(props) => <OnboardingScreen onDone={() => props.navigation.replace('Dashboard')} />}
-          </Stack.Screen>
+      <Stack.Navigator initialRouteName={isAnonymous ? 'Landing' : 'Dashboard'}>
+        {isAnonymous ? (
+          <>
+            <Stack.Screen name="Landing" options={{ headerShown: false }}>
+              {(props) => (
+                <LandingScreen
+                  {...props}
+                  onLogin={(mode) => props.navigation.navigate(mode === 'login' ? 'Login' : 'Signup')}
+                  onViewPlans={() => props.navigation.navigate('Plans')}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="Onboarding" options={{ headerShown: false }}>
+              {(props) => <OnboardingScreen onDone={() => props.navigation.replace('Dashboard')} />}
+            </Stack.Screen>
+            <Stack.Screen name="Plans" options={{ title: 'Planos' }}>
+              {(props) => <PlansScreen navigation={props.navigation} />}
+            </Stack.Screen>
+          </>
         ) : null}
+
         <Stack.Screen name="Dashboard" options={{ headerShown: true }}>
           {(props) => (
             <DashboardScreen
@@ -67,6 +95,21 @@ export default function App() {
         </Stack.Screen>
         <Stack.Screen name="Upgrade" options={{ title: 'Upgrade' }}>
           {(props) => <UpgradeScreen onClose={() => props.navigation.goBack()} />}
+        </Stack.Screen>
+        <Stack.Screen name="Login" options={{ headerTitle: 'Entrar', headerBackTitle: 'Voltar' }}>
+          {(props) => (
+            <LoginScreen {...props} onDone={() => props.navigation.replace('Dashboard')} />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="Signup" options={{ headerTitle: 'Criar conta', headerBackTitle: 'Voltar' }}>
+          {(props) => (
+            <SignupScreen {...props} onDone={() => props.navigation.replace('Dashboard')} />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="Profile" options={{ headerTitle: 'Perfil' }}>
+          {(props) => (
+            <ProfileScreen {...props} />
+          )}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>

@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TextInput, Alert, Image, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { colors } from '../theme/colors';
 
-type Props = { onDone: () => void };
+type Props = { onDone: () => void; route?: any };
 
-export default function OnboardingScreen({ onDone }: Props) {
+export default function OnboardingScreen({ onDone, route }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,11 +22,14 @@ export default function OnboardingScreen({ onDone }: Props) {
   const dangerColor = colors.danger;
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
+  const initialMode: 'login' | 'signup' = (route?.params?.mode === 'signup' ? 'signup' : 'login');
+  const isLoginPrimary = useMemo(() => initialMode === 'login', [initialMode]);
+
   function validateEmail(value: string) {
     if (!value) return 'Informe seu e-mail';
     const ok = /\S+@\S+\.\S+/.test(value);
     return ok ? undefined : 'E-mail inválido';
-  }
+    }
 
   function validatePassword(value: string) {
     if (!value) return 'Informe sua senha';
@@ -89,11 +92,14 @@ export default function OnboardingScreen({ onDone }: Props) {
     else Alert.alert('Verifique seu e-mail', 'Enviamos um link para redefinir sua senha.');
   }
 
+  const filledBtn = { backgroundColor: primaryColor, paddingVertical: 14, borderRadius: 12, alignItems: 'center', flexDirection:'row', justifyContent:'center' } as const;
+  const outlineBtn = { borderWidth: 2, borderColor: primaryColor, paddingVertical: 12, borderRadius: 12, alignItems: 'center', flexDirection:'row', justifyContent:'center' } as const;
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: bgColor }}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
         <Image source={require('../../assets/icon.png')} style={{ width: 198, height: 198, borderRadius: 16, marginBottom: 6 }} />
-        <Text style={{ fontSize: 24, fontWeight: '800', color: textColor, marginBottom: 4 }}></Text>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: textColor, marginBottom: 4 }}>EVDocs</Text>
         <Text style={{ color: mutedText, marginBottom: 16, textAlign: 'center' }}>Sincronize e proteja seus documentos em todos dispositivos.</Text>
 
         <View style={{ width: '100%', maxWidth: 420, backgroundColor: cardBg, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
@@ -136,18 +142,19 @@ export default function OnboardingScreen({ onDone }: Props) {
             <Text style={{ color: primaryColor, fontWeight:'600' }}>Esqueci minha senha</Text>
           </TouchableOpacity>
 
-          {/* Entrar primeiro */}
-          <TouchableOpacity onPress={signIn} disabled={loading} style={{ backgroundColor: primaryColor, opacity: loading ? 0.7 : 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', flexDirection:'row', justifyContent:'center' }}>
-            <Ionicons name='log-in' size={18} color='#fff' style={{ marginRight:8 }} />
-            <Text style={{ color: '#fff', fontWeight: '700' }}>{loading ? 'Carregando...' : 'Entrar'}</Text>
+          {/* Botões conforme modo */}
+          {/* Login */}
+          <TouchableOpacity onPress={signIn} disabled={loading} style={isLoginPrimary ? [filledBtn, { opacity: loading ? 0.7 : 1 }] : outlineBtn}>
+            <Ionicons name='log-in' size={18} color={isLoginPrimary ? '#fff' : primaryColor} style={{ marginRight:8 }} />
+            <Text style={{ color: isLoginPrimary ? '#fff' : primaryColor, fontWeight: '700' }}>{loading ? 'Carregando...' : 'Entrar'}</Text>
           </TouchableOpacity>
 
           <View style={{ height: 10 }} />
 
-          {/* Criar Conta depois */}
-          <TouchableOpacity onPress={signUp} disabled={loading} style={{ borderWidth: 2, borderColor: primaryColor, paddingVertical: 12, borderRadius: 12, alignItems: 'center', flexDirection:'row', justifyContent:'center' }}>
-            <Ionicons name='person-add' size={18} color={primaryColor} style={{ marginRight:8 }} />
-            <Text style={{ color: primaryColor, fontWeight: '700' }}>{loading ? 'Carregando...' : 'Criar Conta'}</Text>
+          {/* Signup */}
+          <TouchableOpacity onPress={signUp} disabled={loading} style={!isLoginPrimary ? [filledBtn, { opacity: loading ? 0.7 : 1 }] : outlineBtn}>
+            <Ionicons name='person-add' size={18} color={!isLoginPrimary ? '#fff' : primaryColor} style={{ marginRight:8 }} />
+            <Text style={{ color: !isLoginPrimary ? '#fff' : primaryColor, fontWeight: '700' }}>{loading ? 'Carregando...' : 'Criar Conta'}</Text>
           </TouchableOpacity>
         </View>
 

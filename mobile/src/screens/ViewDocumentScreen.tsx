@@ -106,22 +106,22 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity onPress={shareDoc} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name='share-social' size={18} color={primaryColor} style={{ marginRight: 6 }} />
-              <Text style={{ color: primaryColor, fontWeight: '700' }}>Compartilhar</Text>
+              <Text style={{ color: primaryColor, fontWeight: '700' }}></Text>
             </TouchableOpacity>
             <View style={{ width: 8 }} />
             <TouchableOpacity onPress={() => onEdit?.()} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name='pencil' size={18} color={primaryColor} style={{ marginRight: 6 }} />
-              <Text style={{ color: primaryColor, fontWeight: '700' }}>Editar</Text>
+              <Text style={{ color: primaryColor, fontWeight: '700' }}></Text>
             </TouchableOpacity>
             <View style={{ width: 8 }} />
             <TouchableOpacity onPress={() => exportAsPDF(document.name, document.frontImageUri, document.backImageUri)} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name='download' size={18} color={primaryColor} style={{ marginRight: 6 }} />
-              <Text style={{ color: primaryColor, fontWeight: '700' }}>Salvar PDF</Text>
+              <Text style={{ color: primaryColor, fontWeight: '700' }}></Text>
             </TouchableOpacity>
             <View style={{ width: 8 }} />
             <TouchableOpacity onPress={remove} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: dangerColor, flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name='trash' size={18} color='#fff' style={{ marginRight: 6 }} />
-              <Text style={{ color: '#fff', fontWeight: '700' }}>Excluir</Text>
+              <Text style={{ color: '#fff', fontWeight: '700' }}></Text>
             </TouchableOpacity>
           </View>
         ) : (
