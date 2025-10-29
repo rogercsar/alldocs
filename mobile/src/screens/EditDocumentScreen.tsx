@@ -15,23 +15,23 @@ const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço',
 function getTemplate(type: typeof DOC_TYPES[number]) {
   switch (type) {
     case 'RG':
-      return { numberLabel: 'Número do RG', frontLabel: 'Foto (Frente RG)', backLabel: 'Foto (Verso RG)' };
+      return { numberLabel: 'Número do RG', frontLabel: 'Foto (Frente RG)', backLabel: 'Foto (Verso RG)', imagesLayout: 'sideBySide', hasBack: true, numberPlaceholder: 'Ex.: 12.345.678-9' };
     case 'CNH':
-      return { numberLabel: 'Número da CNH', frontLabel: 'Foto (Frente CNH)', backLabel: 'Foto (Verso CNH)' };
+      return { numberLabel: 'Número da CNH', frontLabel: 'Foto (Frente CNH)', backLabel: 'Foto (Verso CNH)', imagesLayout: 'sideBySide', hasBack: true, numberPlaceholder: 'Ex.: 00000000000' };
     case 'CPF':
-      return { numberLabel: 'CPF', frontLabel: 'Foto (Frente CPF)', backLabel: 'Foto (Verso CPF)' };
+      return { numberLabel: 'CPF', frontLabel: 'Foto (Frente CPF)', backLabel: 'Foto (Verso CPF)', imagesLayout: 'sideBySide', hasBack: true, numberPlaceholder: 'Ex.: 000.000.000-00' };
     case 'Passaporte':
-      return { numberLabel: 'Número do Passaporte', frontLabel: 'Foto (Frente Passaporte)', backLabel: 'Foto (Verso Passaporte)' };
+      return { numberLabel: 'Número do Passaporte', frontLabel: 'Foto (Frente Passaporte)', backLabel: 'Foto (Verso Passaporte)', imagesLayout: 'stack', hasBack: true, numberPlaceholder: 'Ex.: BR123456' };
     case 'Comprovante de endereço':
-      return { numberLabel: 'Identificador', frontLabel: 'Foto (Frente Comprovante)', backLabel: 'Foto (Verso Comprovante)' };
+      return { numberLabel: 'Identificador', frontLabel: 'Foto (Frente Comprovante)', backLabel: '', imagesLayout: 'stack', hasBack: false, numberPlaceholder: 'Ex.: Conta nº / Código cliente' };
     case 'Documento do veículo':
-      return { numberLabel: 'Placa/RENAVAM', frontLabel: 'Foto (Frente Doc Veículo)', backLabel: 'Foto (Verso Doc Veículo)' };
+      return { numberLabel: 'Placa/RENAVAM', frontLabel: 'Foto (Frente Doc Veículo)', backLabel: 'Foto (Verso Doc Veículo)', imagesLayout: 'sideBySide', hasBack: true, numberPlaceholder: 'Ex.: ABC1D23 ou 123456789' };
     case 'Cartões':
-      return { numberLabel: 'Número do Cartão', frontLabel: 'Foto (Frente Cartão)', backLabel: 'Foto (Verso Cartão)' };
+      return { numberLabel: 'Número do Cartão', frontLabel: 'Foto (Frente Cartão)', backLabel: 'Foto (Verso Cartão)', imagesLayout: 'sideBySide', hasBack: true, numberPlaceholder: 'Ex.: 1234 5678 9012 3456' };
     case 'Certidões':
-      return { numberLabel: 'Número do Registro', frontLabel: 'Foto (Frente Certidão)', backLabel: 'Foto (Verso Certidão)' };
+      return { numberLabel: 'Número do Registro', frontLabel: 'Foto (Frente Certidão)', backLabel: 'Foto (Verso Certidão)', imagesLayout: 'stack', hasBack: true, numberPlaceholder: 'Ex.: Livro/Folha/Termo' };
     default:
-      return { numberLabel: 'Número do Documento', frontLabel: 'Foto (Frente)', backLabel: 'Foto (Verso)' };
+      return { numberLabel: 'Número do Documento', frontLabel: 'Foto (Frente)', backLabel: 'Foto (Verso)', imagesLayout: 'stack', hasBack: true, numberPlaceholder: 'Ex.: 123456789' };
   }
 }
 
@@ -115,41 +115,93 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
           <TextInput value={name} onChangeText={setName} placeholder={`Ex.: ${docType}`} placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:14 }} />
 
           <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.numberLabel}</Text>
-          <TextInput value={number} onChangeText={setNumber} placeholder='Ex.: 123456789' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:16 }} />
+          <TextInput value={number} onChangeText={setNumber} placeholder={template.numberPlaceholder} placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:16 }} />
 
-          <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.frontLabel}</Text>
-          {frontUri ? (
-            <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, overflow:'hidden', marginBottom:8 }}>
-              <Image source={{ uri: frontUri }} style={{ height:160 }} resizeMode='contain'/>
-            </View>
-          ) : null}
-          <View style={{ flexDirection:'row', gap:8, marginBottom:8 }}>
-            <TouchableOpacity onPress={() => pick(setFrontUri)} style={{ flex:1, borderWidth:2, borderColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
-              <Ionicons name='image' size={18} color={primaryColor} style={{ marginRight:6 }} />
-              <Text style={{ color: primaryColor, fontWeight:'700' }}>Galeria</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => capture(setFrontUri)} style={{ flex:1, backgroundColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
-              <Ionicons name='camera' size={18} color='#fff' style={{ marginRight:6 }} />
-              <Text style={{ color:'#fff', fontWeight:'700' }}>Câmera</Text>
-            </TouchableOpacity>
-          </View>
+          {template.imagesLayout === 'sideBySide' ? (
+            <View style={{ flexDirection:'row', gap:8 }}>
+              {/* Frente */}
+              <View style={{ flex:1 }}>
+                <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.frontLabel}</Text>
+                {frontUri ? (
+                  <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, overflow:'hidden', marginBottom:8 }}>
+                    <Image source={{ uri: frontUri }} style={{ height:160 }} resizeMode='contain'/>
+                  </View>
+                ) : null}
+                <View style={{ flexDirection:'row', gap:8, marginBottom:8 }}>
+                  <TouchableOpacity onPress={() => pick(setFrontUri)} style={{ flex:1, borderWidth:2, borderColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
+                    <Ionicons name='image' size={18} color={primaryColor} style={{ marginRight:6 }} />
+                    <Text style={{ color: primaryColor, fontWeight:'700' }}>Galeria</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => capture(setFrontUri)} style={{ flex:1, backgroundColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
+                    <Ionicons name='camera' size={18} color='#fff' style={{ marginRight:6 }} />
+                    <Text style={{ color:'#fff', fontWeight:'700' }}>Câmera</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-          <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.backLabel}</Text>
-          {backUri ? (
-            <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, overflow:'hidden', marginBottom:8 }}>
-              <Image source={{ uri: backUri }} style={{ height:160 }} resizeMode='contain'/>
+              {/* Verso */}
+              {template.hasBack && (
+                <View style={{ flex:1 }}>
+                  <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.backLabel}</Text>
+                  {backUri ? (
+                    <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, overflow:'hidden', marginBottom:8 }}>
+                      <Image source={{ uri: backUri }} style={{ height:160 }} resizeMode='contain'/>
+                    </View>
+                  ) : null}
+                  <View style={{ flexDirection:'row', gap:8 }}>
+                    <TouchableOpacity onPress={() => pick(setBackUri)} style={{ flex:1, borderWidth:2, borderColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
+                      <Ionicons name='image' size={18} color={primaryColor} style={{ marginRight:6 }} />
+                      <Text style={{ color: primaryColor, fontWeight:'700' }}>Galeria</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => capture(setBackUri)} style={{ flex:1, backgroundColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
+                      <Ionicons name='camera' size={18} color='#fff' style={{ marginRight:6 }} />
+                      <Text style={{ color:'#fff', fontWeight:'700' }}>Câmera</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
-          ) : null}
-          <View style={{ flexDirection:'row', gap:8 }}>
-            <TouchableOpacity onPress={() => pick(setBackUri)} style={{ flex:1, borderWidth:2, borderColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
-              <Ionicons name='image' size={18} color={primaryColor} style={{ marginRight:6 }} />
-              <Text style={{ color: primaryColor, fontWeight:'700' }}>Galeria</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => capture(setBackUri)} style={{ flex:1, backgroundColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
-              <Ionicons name='camera' size={18} color='#fff' style={{ marginRight:6 }} />
-              <Text style={{ color:'#fff', fontWeight:'700' }}>Câmera</Text>
-            </TouchableOpacity>
-          </View>
+          ) : (
+            <>
+              <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.frontLabel}</Text>
+              {frontUri ? (
+                <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, overflow:'hidden', marginBottom:8 }}>
+                  <Image source={{ uri: frontUri }} style={{ height:160 }} resizeMode='contain'/>
+                </View>
+              ) : null}
+              <View style={{ flexDirection:'row', gap:8, marginBottom:8 }}>
+                <TouchableOpacity onPress={() => pick(setFrontUri)} style={{ flex:1, borderWidth:2, borderColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
+                  <Ionicons name='image' size={18} color={primaryColor} style={{ marginRight:6 }} />
+                  <Text style={{ color: primaryColor, fontWeight:'700' }}>Galeria</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => capture(setFrontUri)} style={{ flex:1, backgroundColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
+                  <Ionicons name='camera' size={18} color='#fff' style={{ marginRight:6 }} />
+                  <Text style={{ color:'#fff', fontWeight:'700' }}>Câmera</Text>
+                </TouchableOpacity>
+              </View>
+
+              {template.hasBack && (
+                <>
+                  <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.backLabel}</Text>
+                  {backUri ? (
+                    <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, overflow:'hidden', marginBottom:8 }}>
+                      <Image source={{ uri: backUri }} style={{ height:160 }} resizeMode='contain'/>
+                    </View>
+                  ) : null}
+                  <View style={{ flexDirection:'row', gap:8 }}>
+                    <TouchableOpacity onPress={() => pick(setBackUri)} style={{ flex:1, borderWidth:2, borderColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
+                      <Ionicons name='image' size={18} color={primaryColor} style={{ marginRight:6 }} />
+                      <Text style={{ color: primaryColor, fontWeight:'700' }}>Galeria</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => capture(setBackUri)} style={{ flex:1, backgroundColor: primaryColor, paddingVertical:12, borderRadius:12, alignItems:'center', flexDirection:'row', justifyContent:'center' }}>
+                      <Ionicons name='camera' size={18} color='#fff' style={{ marginRight:6 }} />
+                      <Text style={{ color:'#fff', fontWeight:'700' }}>Câmera</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </>
+          )}
 
           <View style={{ height:16 }} />
           <TouchableOpacity onPress={save} disabled={saving} style={{ backgroundColor: primaryColor, opacity: saving ? 0.7 : 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', flexDirection:'row', justifyContent:'center' }}>

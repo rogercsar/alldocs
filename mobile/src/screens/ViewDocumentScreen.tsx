@@ -16,23 +16,23 @@ type DocType = typeof DOC_TYPES[number];
 function getViewTemplate(type: DocType) {
   switch (type) {
     case 'RG':
-      return { accentColor: '#10B981', icon: 'person', numberLabel: 'Número do RG', frontLabel: 'Frente RG', backLabel: 'Verso RG', layout: 'sideBySide' as const };
+      return { accentColor: '#10B981', icon: 'person', numberLabel: 'Número do RG', frontLabel: 'Frente RG', backLabel: 'Verso RG', layout: 'sideBySide' as const, hasBack: true };
     case 'CNH':
-      return { accentColor: '#F59E0B', icon: 'car', numberLabel: 'Número da CNH', frontLabel: 'Frente CNH', backLabel: 'Verso CNH', layout: 'vertical' as const };
+      return { accentColor: '#F59E0B', icon: 'car', numberLabel: 'Número da CNH', frontLabel: 'Frente CNH', backLabel: 'Verso CNH', layout: 'sideBySide' as const, hasBack: true };
     case 'CPF':
-      return { accentColor: '#3B82F6', icon: 'person', numberLabel: 'CPF', frontLabel: 'Frente CPF', backLabel: 'Verso CPF', layout: 'vertical' as const };
+      return { accentColor: '#3B82F6', icon: 'person', numberLabel: 'CPF', frontLabel: 'Frente CPF', backLabel: 'Verso CPF', layout: 'sideBySide' as const, hasBack: true };
     case 'Passaporte':
-      return { accentColor: '#8B5CF6', icon: 'airplane', numberLabel: 'Número do Passaporte', frontLabel: 'Frente Passaporte', backLabel: 'Verso Passaporte', layout: 'vertical' as const };
+      return { accentColor: '#8B5CF6', icon: 'airplane', numberLabel: 'Número do Passaporte', frontLabel: 'Frente Passaporte', backLabel: 'Verso Passaporte', layout: 'vertical' as const, hasBack: true };
     case 'Comprovante de endereço':
-      return { accentColor: '#0EA5E9', icon: 'home', numberLabel: 'Identificador', frontLabel: 'Frente Comprovante', backLabel: 'Verso Comprovante', layout: 'vertical' as const };
+      return { accentColor: '#0EA5E9', icon: 'home', numberLabel: 'Identificador', frontLabel: 'Frente Comprovante', backLabel: 'Verso Comprovante', layout: 'vertical' as const, hasBack: false };
     case 'Documento do veículo':
-      return { accentColor: '#22C55E', icon: 'car', numberLabel: 'Placa/RENAVAM', frontLabel: 'Frente Doc Veículo', backLabel: 'Verso Doc Veículo', layout: 'vertical' as const };
+      return { accentColor: '#22C55E', icon: 'car', numberLabel: 'Placa/RENAVAM', frontLabel: 'Frente Doc Veículo', backLabel: 'Verso Doc Veículo', layout: 'sideBySide' as const, hasBack: true };
     case 'Cartões':
-      return { accentColor: '#EF4444', icon: 'wallet', numberLabel: 'Número do Cartão', frontLabel: 'Frente Cartão', backLabel: 'Verso Cartão', layout: 'vertical' as const };
+      return { accentColor: '#EF4444', icon: 'wallet', numberLabel: 'Número do Cartão', frontLabel: 'Frente Cartão', backLabel: 'Verso Cartão', layout: 'sideBySide' as const, hasBack: true };
     case 'Certidões':
-      return { accentColor: '#A855F7', icon: 'ribbon', numberLabel: 'Número do Registro', frontLabel: 'Frente Certidão', backLabel: 'Verso Certidão', layout: 'vertical' as const };
+      return { accentColor: '#A855F7', icon: 'ribbon', numberLabel: 'Número do Registro', frontLabel: 'Frente Certidão', backLabel: 'Verso Certidão', layout: 'vertical' as const, hasBack: true };
     default:
-      return { accentColor: '#6B7280', icon: 'document-text', numberLabel: 'Número do Documento', frontLabel: 'Frente', backLabel: 'Verso', layout: 'vertical' as const };
+      return { accentColor: '#6B7280', icon: 'document-text', numberLabel: 'Número do Documento', frontLabel: 'Frente', backLabel: 'Verso', layout: 'vertical' as const, hasBack: true };
   }
 }
 
@@ -165,7 +165,7 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
               </View>
             </View>
           ) : null}
-          {document.backImageUri ? (
+          {template.hasBack && document.backImageUri ? (
             <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: template.accentColor, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
               <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.backLabel}</Text>
               <View style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: '#F9FAFB', position:'relative' }}>

@@ -7,6 +7,7 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import EditDocumentScreen from './src/screens/EditDocumentScreen';
 import ViewDocumentScreen from './src/screens/ViewDocumentScreen';
 import UpgradeScreen from './src/screens/UpgradeScreen';
+import { supabase } from './src/supabase';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,7 +17,14 @@ export default function App() {
   const [userId, setUserId] = useState('anonymous');
 
   useEffect(() => {
-    setReady(true);
+    supabase.auth.getSession().then(({ data }) => {
+      setUserId(data.session?.user?.id || 'anonymous');
+      setReady(true);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id || 'anonymous');
+    });
+    return () => { sub.subscription?.unsubscribe?.(); };
   }, []);
 
   if (!unlocked) {
