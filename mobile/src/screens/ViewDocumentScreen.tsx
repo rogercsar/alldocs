@@ -186,7 +186,7 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
 // Botões de exportação para PDF (web)
 async function exportAsPDF(title: string, frontUri?: string, backUri?: string) {
   if (Platform.OS !== 'web') return;
-  const jsPDF = (await import('jspdf')).default;
+  const jsPDF = require('jspdf').default;
   const doc = new jsPDF();
 
   doc.setFontSize(16);

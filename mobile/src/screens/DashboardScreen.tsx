@@ -1,16 +1,42 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useState, useCallback, useLayoutEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getDocuments, initDb, countDocuments } from '../storage/db';
+import { getDocuments, initDb, countDocuments, deleteDocument } from '../storage/db';
+import { syncDocumentDelete } from '../storage/sync';
 import type { DocumentItem } from '../types';
 import { supabase } from '../supabase';
+import { useNavigation } from '@react-navigation/native';
 
 const primaryColor = '#4F46E5';
 const bgColor = '#F3F4F6';
 
+function iconForType(type?: string): { name: keyof typeof Ionicons.glyphMap; color: string } {
+  switch (type) {
+    case 'RG':
+      return { name: 'person', color: '#2563EB' } as any;
+    case 'CNH':
+    case 'Documento do veículo':
+      return { name: 'car', color: '#10B981' } as any;
+    case 'CPF':
+      return { name: 'finger-print', color: '#F59E0B' } as any;
+    case 'Passaporte':
+      return { name: 'airplane', color: '#7C3AED' } as any;
+    case 'Comprovante de endereço':
+      return { name: 'home', color: '#EF4444' } as any;
+    case 'Cartões':
+      return { name: 'card', color: '#0EA5E9' } as any;
+    case 'Certidões':
+      return { name: 'document-text', color: '#6B7280' } as any;
+    default:
+      return { name: 'document', color: '#6B7280' } as any;
+  }
+}
+
 export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; onLogout?: () => void; userId: string; }) {
+  const navigation = useNavigation<any>();
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [limitReached, setLimitReached] = useState(false);
+  const [menuFor, setMenuFor] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     initDb();
@@ -86,29 +112,107 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
     onLogout?.();
   };
 
-  const renderItem = ({ item }: { item: DocumentItem }) => (
-    <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:2 }}>
-      <Text style={{ fontWeight: '800', color:'#111827' }}>{item.name}</Text>
-      <Text style={{ color:'#6B7280', marginTop:4 }}>{item.number}</Text>
-    </TouchableOpacity>
-  );
-
-  return (
-    <View style={{ flex:1, backgroundColor: bgColor }}>
-      <View style={{ paddingHorizontal:16, paddingTop:16, paddingBottom:8, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
-        <Text style={{ fontSize: 22, fontWeight: '800', color:'#111827' }}>Meus Documentos</Text>
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
         <View style={{ flexDirection:'row', alignItems:'center' }}>
-          <TouchableOpacity onPress={load} style={{ borderWidth:2, borderColor: primaryColor, paddingVertical:8, paddingHorizontal:12, borderRadius:12, flexDirection:'row', alignItems:'center' }}>
+          <Image source={require('../../assets/icon.png')} style={{ width:24, height:24, marginRight:8 }} />
+          <Text style={{ fontSize:18, fontWeight:'800', color:'#111827' }}>AllDocs</Text>
+        </View>
+      ),
+      headerRight: () => (
+        <View style={{ flexDirection:'row', alignItems:'center' }}>
+          <TouchableOpacity onPress={load} style={{ borderWidth:2, borderColor: primaryColor, paddingVertical:6, paddingHorizontal:10, borderRadius:10, flexDirection:'row', alignItems:'center' }}>
             <Ionicons name='refresh' size={18} color={primaryColor} style={{ marginRight:6 }} />
             <Text style={{ color: primaryColor, fontWeight:'700' }}>Atualizar</Text>
           </TouchableOpacity>
           <View style={{ width:8 }} />
-          <TouchableOpacity onPress={logout} style={{ borderWidth:2, borderColor: '#EF4444', paddingVertical:8, paddingHorizontal:12, borderRadius:12, flexDirection:'row', alignItems:'center' }}>
+          <TouchableOpacity onPress={logout} style={{ borderWidth:2, borderColor: '#EF4444', paddingVertical:6, paddingHorizontal:10, borderRadius:10, flexDirection:'row', alignItems:'center' }}>
             <Ionicons name='log-out' size={18} color={'#EF4444'} style={{ marginRight:6 }} />
             <Text style={{ color: '#EF4444', fontWeight:'700' }}>Sair</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      ),
+    });
+  }, [navigation, load]);
+
+  const onEdit = (doc: DocumentItem) => {
+    navigation.navigate('Edit', { doc });
+  };
+
+  const onShare = async (doc: DocumentItem) => {
+    const type = doc.type || 'Documento';
+    const title = `${doc.name} (${type})`;
+    const message = `${title}\nNúmero: ${doc.number || '—'}`;
+    try {
+      await Share.share({ title, message });
+    } catch (e: any) {
+      Alert.alert('Não foi possível compartilhar', e?.message || String(e));
+    }
+  };
+
+  const onDelete = async (doc: DocumentItem) => {
+    Alert.alert('Excluir', `Deseja excluir '${doc.name}'?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: async () => {
+        try {
+          if (doc.id) {
+            await deleteDocument(doc.id);
+            try { await syncDocumentDelete(doc.id, userId); } catch {}
+            await load();
+          }
+        } catch (e) {
+          Alert.alert('Erro ao excluir', String(e));
+        }
+      } },
+    ]);
+  };
+
+  const renderItem = ({ item }: { item: DocumentItem }) => {
+    const icon = iconForType(item.type);
+    const hasId = typeof item.id === 'number';
+    return (
+      <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:2 }}>
+        <View style={{ flexDirection:'row', alignItems:'center' }}>
+          <View style={{ width:36, height:36, borderRadius:8, backgroundColor:'#F9FAFB', alignItems:'center', justifyContent:'center', marginRight:10 }}>
+            <Ionicons name={icon.name} size={22} color={icon.color} />
+          </View>
+          <View style={{ flex:1 }}>
+            <Text style={{ fontSize:16, fontWeight:'700', color:'#111827' }}>{item.name}</Text>
+            <Text style={{ fontSize:12, color:'#6B7280', marginTop:4 }}>{item.type || 'Documento'}</Text>
+          </View>
+          {hasId && (
+            <TouchableOpacity onPress={() => setMenuFor(item.id!)}>
+              <Ionicons name='ellipsis-vertical' size={20} color={'#9CA3AF'} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <Text style={{ fontSize:12, color:'#374151', marginTop:10 }}>{item.number || '—'}</Text>
+
+        {menuFor === item.id && (
+          <View style={{ position:'absolute', right:14, top:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:10, shadowColor:'#000', shadowOpacity:0.08, shadowRadius:14, elevation:3 }}>
+            <TouchableOpacity onPress={() => { setMenuFor(null); onEdit(item); }} style={{ paddingVertical:10, paddingHorizontal:14, flexDirection:'row', alignItems:'center' }}>
+              <Ionicons name='create-outline' size={18} color={'#111827'} style={{ marginRight:8 }} />
+              <Text style={{ fontSize:14, color:'#111827', fontWeight:'600' }}>Editar</Text>
+            </TouchableOpacity>
+            <View style={{ height:1, backgroundColor:'#E5E7EB' }} />
+            <TouchableOpacity onPress={() => { setMenuFor(null); onShare(item); }} style={{ paddingVertical:10, paddingHorizontal:14, flexDirection:'row', alignItems:'center' }}>
+              <Ionicons name='share-social-outline' size={18} color={primaryColor} style={{ marginRight:8 }} />
+              <Text style={{ fontSize:14, color: primaryColor, fontWeight:'600' }}>Compartilhar</Text>
+            </TouchableOpacity>
+            <View style={{ height:1, backgroundColor:'#E5E7EB' }} />
+            <TouchableOpacity onPress={() => { setMenuFor(null); onDelete(item); }} style={{ paddingVertical:10, paddingHorizontal:14, flexDirection:'row', alignItems:'center' }}>
+              <Ionicons name='trash-outline' size={18} color={'#EF4444'} style={{ marginRight:8 }} />
+              <Text style={{ fontSize:14, color:'#EF4444', fontWeight:'600' }}>Excluir</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <View style={{ flex:1, backgroundColor: bgColor }}>
 
       {limitReached && (
         <TouchableOpacity onPress={onUpgrade} style={{ marginHorizontal:16, marginBottom:8, padding:12, backgroundColor:'#FEF3C7', borderRadius:10, borderWidth:1, borderColor:'#F59E0B' }}>
