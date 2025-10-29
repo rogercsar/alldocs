@@ -51,7 +51,7 @@ export function deviceLabel(): string {
   }
 }
 
-export async function registerDeviceForUser(userId: string) {
+export async function registerDeviceForUser(userId: string): Promise<{ ok: boolean; status: number; limit?: number } | void> {
   if (!userId || userId === 'anonymous') return;
   try {
     const deviceId = await getOrCreateDeviceId();
@@ -59,11 +59,17 @@ export async function registerDeviceForUser(userId: string) {
     const platform = Platform.OS;
     const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
     if (!base) return;
-    await fetch(`${base}/.netlify/functions/devices`, {
+    const res = await fetch(`${base}/.netlify/functions/devices`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, deviceId, platform, label }),
     });
+    if (!res.ok) {
+      let j: any = null;
+      try { j = await res.json(); } catch {}
+      return { ok: false, status: res.status, limit: j?.limit };
+    }
+    return { ok: true, status: res.status };
   } catch (e) {
     // silencioso em dev
     console.warn('Falha ao registrar dispositivo (não crítico)', e);

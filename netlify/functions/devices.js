@@ -41,7 +41,7 @@ exports.handler = async function(event) {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId);
       if (error) throw error;
-      return json({ count: count || 0 }, 200);
+      return json({ count: count || 0, limit: FREE_DEVICE_LIMIT }, 200);
     }
 
     if (event.httpMethod === 'POST') {

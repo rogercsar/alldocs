@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LockScreen from './src/screens/LockScreen';
@@ -21,6 +21,7 @@ export default function App() {
   const [unlocked, setUnlocked] = useState(false);
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState('');
+  const navRef = useRef(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -35,7 +36,14 @@ export default function App() {
 
   useEffect(() => {
     if (userId && userId !== 'anonymous') {
-      registerDeviceForUser(userId);
+      (async () => {
+        try {
+          const res = await registerDeviceForUser(userId);
+          if (res && res.status === 409) {
+            navRef.current?.navigate?.('Upgrade');
+          }
+        } catch {}
+      })();
     }
   }, [userId]);
 
@@ -47,7 +55,7 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navRef}>
       <Stack.Navigator initialRouteName={isAnonymous ? 'Landing' : 'Dashboard'}>
         {isAnonymous ? (
           <>

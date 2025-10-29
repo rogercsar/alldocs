@@ -39,6 +39,8 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const navigation = useNavigation<any>();
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [limitReached, setLimitReached] = useState(false);
+  const [deviceCount, setDeviceCount] = useState<number | null>(null);
+  const [deviceLimit, setDeviceLimit] = useState<number | null>(null);
   const [menuFor, setMenuFor] = useState<number | null>(null);
   const [logoError, setLogoError] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
@@ -140,7 +142,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
           {logoError ? (
             <Ionicons name='document-text' size={28} color={colors.text} />
           ) : (
-            <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:116, height:116 }} />
+            <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:70, height:70 }} />
           )}
         </View>
       ),
@@ -229,8 +231,34 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
     );
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!userId || userId === 'anonymous') return;
+        const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || (typeof window !== 'undefined' ? (window as any).location.origin : '');
+        if (!base) return;
+        const res = await fetch(`${base}/.netlify/functions/devices?userId=${encodeURIComponent(userId)}`);
+        if (!res.ok) return;
+        const j = await res.json();
+        if (!cancelled) {
+          setDeviceCount(j?.count ?? null);
+          setDeviceLimit(j?.limit ?? null);
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  const deviceLimitReached = deviceCount !== null && deviceLimit !== null && deviceCount >= deviceLimit;
   return (
     <View style={{ flex:1, backgroundColor: bgColor }}>
+
+      {deviceLimitReached && (
+        <TouchableOpacity onPress={onUpgrade} style={{ marginHorizontal:16, marginBottom:8, padding:12, backgroundColor: colors.warningBg, borderRadius:10, borderWidth:1, borderColor: colors.warning }}>
+          <Text style={{ color:'#92400E', fontWeight:'600' }}>Limite de dispositivos atingido ({deviceCount}/{deviceLimit}). Faça upgrade para adicionar mais.</Text>
+        </TouchableOpacity>
+      )}
 
       {limitReached && (
         <TouchableOpacity onPress={onUpgrade} style={{ marginHorizontal:16, marginBottom:8, padding:12, backgroundColor: colors.warningBg, borderRadius:10, borderWidth:1, borderColor: colors.warning }}>
