@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Button, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, Button, ActivityIndicator, Alert, TouchableOpacity, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../supabase';
 
@@ -34,7 +34,14 @@ export default function UpgradeScreen({ onClose }: { onClose: () => void }) {
       }
       const json = await res.json();
       if (json.init_point) {
-        setCheckoutUrl(json.init_point);
+        if (Platform.OS === 'web') {
+          try {
+            (window as any).open(json.init_point, '_blank', 'noopener,noreferrer');
+          } catch {}
+          setCheckoutUrl(json.init_point);
+        } else {
+          setCheckoutUrl(json.init_point);
+        }
         setStatusText('Aguardando confirmação do pagamento…');
         setPolling(true);
       } else {
@@ -115,12 +122,21 @@ export default function UpgradeScreen({ onClose }: { onClose: () => void }) {
         </View>
       ) : (
         <View style={{ flex:1 }}>
-          <WebView source={{ uri: checkoutUrl }} onNavigationStateChange={onNav} startInLoadingState renderLoading={() => (
-            <View style={{ flex:1, alignItems:'center', justifyContent:'center' }}>
-              <ActivityIndicator />
-              <Text style={{ marginTop:8 }}>{statusText || 'Carregando…'}</Text>
+          {Platform.OS === 'web' ? (
+            <View style={{ flex:1, padding:16 }}>
+              <Text style={{ marginBottom:8 }}>O checkout abriu em uma nova aba.</Text>
+              <TouchableOpacity onPress={() => { try { (window as any).open(checkoutUrl!, '_blank', 'noopener,noreferrer'); } catch {} }} style={{ borderWidth:1, borderColor:'#6B7280', borderRadius:8, paddingHorizontal:12, paddingVertical:10, marginBottom:12 }}>
+                <Text>Abrir checkout novamente</Text>
+              </TouchableOpacity>
             </View>
-          )} />
+          ) : (
+            <WebView source={{ uri: checkoutUrl! }} onNavigationStateChange={onNav} startInLoadingState renderLoading={() => (
+              <View style={{ flex:1, alignItems:'center', justifyContent:'center' }}>
+                <ActivityIndicator />
+                <Text style={{ marginTop:8 }}>{statusText || 'Carregando…'}</Text>
+              </View>
+            )} />
+          )}
           <View style={{ padding:12, borderTopWidth:1, borderTopColor:'#E5E7EB' }}>
             <Text style={{ marginBottom:8 }}>{statusText || 'Aguardando confirmação do pagamento…'}</Text>
             <View style={{ flexDirection:'row' }}>
