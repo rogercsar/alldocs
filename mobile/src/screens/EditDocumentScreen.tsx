@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Image, Alert, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, Image, Alert, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { addDocument, updateDocument, saveImageToLocal } from '../storage/db';
@@ -10,8 +10,9 @@ import { colors } from '../theme/colors';
 
 const primaryColor = colors.brandPrimary;
 const bgColor = colors.bg;
-
 const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Outros'] as const;
+
+
 
 function getTemplate(type: typeof DOC_TYPES[number]) {
   switch (type) {
@@ -49,6 +50,10 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
   const [issuingState, setIssuingState] = useState(document?.issuingState || '');
   const [issuingCity, setIssuingCity] = useState(document?.issuingCity || '');
   const [issuingAuthority, setIssuingAuthority] = useState(document?.issuingAuthority || '');
+  // Opções dinâmicas
+  const [cityOptions, setCityOptions] = useState<Option[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [authorityOptions, setAuthorityOptions] = useState<Option[]>([]);
 
   useEffect(() => {
     setName(document?.name || '');
@@ -62,6 +67,46 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     setIssuingCity(document?.issuingCity || '');
     setIssuingAuthority(document?.issuingAuthority || '');
   }, [document?.id]);
+
+  // Carregar cidades ao mudar UF
+  useEffect(() => {
+    setIssuingCity('');
+    setIssuingAuthority('');
+    setCityOptions([]);
+    if (!issuingState) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingCities(true);
+        let url = `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${issuingState}/municipios`;
+        let res = await fetch(url);
+        if (!res.ok) {
+          const s = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados?sigla=${issuingState}`);
+          const states = await s.json();
+          if (states && states[0]?.id) {
+            res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${states[0].id}/municipios`);
+          }
+        }
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) {
+          const opts = data.map((c: any) => ({ value: c.nome, label: c.nome })).sort((a: Option, b: Option) => a.label.localeCompare(b.label, 'pt-BR'));
+          setCityOptions(opts);
+        }
+      } catch (e) {
+        if (!cancelled) setCityOptions([]);
+      } finally {
+        if (!cancelled) setLoadingCities(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [issuingState]);
+
+  // Atualizar opções de órgão emissor conforme UF/Cidade/Tipo
+  useEffect(() => {
+    const opts = computeAuthorities(docType, issuingState, issuingCity);
+    setAuthorityOptions(opts);
+    if (!opts.find((o) => o.value === issuingAuthority)) setIssuingAuthority('');
+  }, [docType, issuingState, issuingCity]);
 
   const template = getTemplate(docType);
 
@@ -141,28 +186,19 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
             <View style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', padding:12, borderRadius:12, marginBottom:16 }}>
               <Text style={{ fontSize: 14, color:'#374151', marginBottom: 8, fontWeight:'700' }}>Informações do Documento</Text>
               <View style={{ flexDirection:'row', gap:8 }}>
-                <View style={{ flex:1 }}>
-                  <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>Data de Expedição</Text>
-                  <TextInput value={issueDate} onChangeText={setIssueDate} placeholder='DD/MM/AAAA' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10, marginBottom:8 }} />
-                </View>
-                <View style={{ flex:1 }}>
-                  <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>Data de Vencimento</Text>
-                  <TextInput value={expiryDate} onChangeText={setExpiryDate} placeholder='DD/MM/AAAA' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10, marginBottom:8 }} />
-                </View>
+                <DateSelect label="Data de Expedição" value={issueDate} onChange={setIssueDate} />
+                <DateSelect label="Data de Vencimento" value={expiryDate} onChange={setExpiryDate} />
               </View>
-              <View style={{ flexDirection:'row', gap:8 }}>
+              <View style={{ flexDirection:'row', gap:8, marginTop: 8 }}>
                 <View style={{ flex:1 }}>
-                  <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>UF</Text>
-                  <TextInput value={issuingState} onChangeText={(v)=> setIssuingState(v.toUpperCase().slice(0,2))} placeholder='UF' placeholderTextColor='#9CA3AF' maxLength={2} style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10, marginBottom:8 }} />
+                  <SelectField label="UF" value={issuingState} placeholder="Selecione a UF" options={UF_OPTIONS} onChange={(v) => setIssuingState(v)} />
                 </View>
                 <View style={{ flex:2 }}>
-                  <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>Cidade</Text>
-                  <TextInput value={issuingCity} onChangeText={setIssuingCity} placeholder='Cidade emissora' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10, marginBottom:8 }} />
+                  <SelectField label="Cidade" value={issuingCity} placeholder={issuingState ? 'Selecione a cidade' : 'Selecione a UF primeiro'} options={cityOptions} onChange={setIssuingCity} disabled={!issuingState} loading={loadingCities} />
                 </View>
               </View>
-              <View>
-                <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>Órgão Emissor</Text>
-                <TextInput value={issuingAuthority} onChangeText={setIssuingAuthority} placeholder='Ex.: SSP' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10 }} />
+              <View style={{ marginTop: 8 }}>
+                <SelectField label="Órgão Emissor" value={issuingAuthority} placeholder={issuingCity ? 'Selecione o órgão' : 'Selecione a cidade primeiro'} options={authorityOptions} onChange={setIssuingAuthority} disabled={!issuingCity} />
               </View>
             </View>
           )}
@@ -262,4 +298,263 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
       </ScrollView>
     </KeyboardAvoidingView>
   );
+}
+
+// --- Tipos e utilitários para dropdowns / datas ---
+type Option = { label: string; value: string };
+
+const UF_OPTIONS: Option[] = [
+  { value: 'AC', label: 'AC - Acre' },
+  { value: 'AL', label: 'AL - Alagoas' },
+  { value: 'AP', label: 'AP - Amapá' },
+  { value: 'AM', label: 'AM - Amazonas' },
+  { value: 'BA', label: 'BA - Bahia' },
+  { value: 'CE', label: 'CE - Ceará' },
+  { value: 'DF', label: 'DF - Distrito Federal' },
+  { value: 'ES', label: 'ES - Espírito Santo' },
+  { value: 'GO', label: 'GO - Goiás' },
+  { value: 'MA', label: 'MA - Maranhão' },
+  { value: 'MT', label: 'MT - Mato Grosso' },
+  { value: 'MS', label: 'MS - Mato Grosso do Sul' },
+  { value: 'MG', label: 'MG - Minas Gerais' },
+  { value: 'PA', label: 'PA - Pará' },
+  { value: 'PB', label: 'PB - Paraíba' },
+  { value: 'PR', label: 'PR - Paraná' },
+  { value: 'PE', label: 'PE - Pernambuco' },
+  { value: 'PI', label: 'PI - Piauí' },
+  { value: 'RJ', label: 'RJ - Rio de Janeiro' },
+  { value: 'RN', label: 'RN - Rio Grande do Norte' },
+  { value: 'RS', label: 'RS - Rio Grande do Sul' },
+  { value: 'RO', label: 'RO - Rondônia' },
+  { value: 'RR', label: 'RR - Roraima' },
+  { value: 'SC', label: 'SC - Santa Catarina' },
+  { value: 'SP', label: 'SP - São Paulo' },
+  { value: 'SE', label: 'SE - Sergipe' },
+  { value: 'TO', label: 'TO - Tocantins' },
+];
+
+function pad2(n: number | string) {
+  const s = String(n);
+  return s.length === 1 ? `0${s}` : s;
+}
+
+function parseDateParts(str: string | undefined) {
+  const m = (str || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? { dd: m[1], mm: m[2], yyyy: m[3] } : { dd: '', mm: '', yyyy: '' };
+}
+
+function SelectField({ label, value, placeholder, options, onChange, disabled, loading }: { label: string; value?: string; placeholder?: string; options: Option[]; onChange: (v: string) => void; disabled?: boolean; loading?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 6 }}>{label}</Text>
+      <TouchableOpacity disabled={disabled} onPress={() => setOpen(true)} style={{ backgroundColor: disabled ? '#F3F4F6' : '#fff', borderWidth: 1, borderColor: '#E5E7EB', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, minHeight: 44, justifyContent: 'center' }}>
+      {loading ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={colors.brandPrimary} />
+          <Text style={{ marginLeft: 8, color: '#6B7280' }}>Carregando…</Text>
+        </View>
+      ) : (
+        <Text style={{ color: value ? '#111827' : '#9CA3AF', fontWeight: value ? '700' : '400' }}>
+          {selected?.label || value || placeholder || 'Selecionar'}
+        </Text>
+      )}
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', padding: 16 }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ backgroundColor: '#fff', borderRadius: 12, maxHeight: '70%', padding: 12 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>{label}</Text>
+              <TouchableOpacity onPress={() => { onChange(''); setOpen(false); }}>
+                <Text style={{ color: colors.brandPrimary, fontWeight: '700' }}>Limpar</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {options.map((o) => (
+                <TouchableOpacity key={o.value} onPress={() => { onChange(o.value); setOpen(false); }} style={{ paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8 }}>
+                  <Text style={{ color: '#111827', fontSize: 15 }}>{o.label}</Text>
+                </TouchableOpacity>
+              ))}
+              {options.length === 0 && (
+                <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                  <Text style={{ color: '#6B7280' }}>Sem opções</Text>
+                </View>
+              )}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+}
+
+// Novo campo de data único com modal de 3 colunas
+function DateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const { dd, mm, yyyy } = parseDateParts(value);
+  const [selDay, setSelDay] = useState<string>(dd);
+  const [selMonth, setSelMonth] = useState<string>(mm);
+  const [selYear, setSelYear] = useState<string>(yyyy);
+
+  useEffect(() => {
+    const parts = parseDateParts(value);
+    setSelDay(parts.dd); setSelMonth(parts.mm); setSelYear(parts.yyyy);
+  }, [value]);
+
+  function daysInMonth(monthStr: string, yearStr: string) {
+    const m = parseInt(monthStr || '0', 10);
+    const y = parseInt(yearStr || '0', 10);
+    if (!m || !y) return 31;
+    return new Date(y, m, 0).getDate();
+  }
+
+  const dayOptions: Option[] = Array.from({ length: daysInMonth(selMonth, selYear) }, (_, i) => {
+    const v = pad2(i + 1);
+    return { value: v, label: v };
+  });
+  const monthOptions: Option[] = Array.from({ length: 12 }, (_, i) => {
+    const v = pad2(i + 1);
+    return { value: v, label: v };
+  });
+  const currentYear = new Date().getFullYear();
+  const yearOptions: Option[] = Array.from({ length: (currentYear + 10) - 1930 + 1 }, (_, idx) => {
+    const y = String((currentYear + 10) - idx);
+    return { value: y, label: y };
+  });
+
+  function confirm() {
+    if (selDay && selMonth && selYear) onChange(`${selDay}/${selMonth}/${selYear}`);
+    setOpen(false);
+  }
+  function clear() {
+    setSelDay(''); setSelMonth(''); setSelYear(''); onChange('');
+    setOpen(false);
+  }
+  function setToday() {
+    const t = new Date();
+    const d = pad2(t.getDate());
+    const m = pad2(t.getMonth() + 1);
+    const y = String(t.getFullYear());
+    setSelDay(d); setSelMonth(m); setSelYear(y);
+    onChange(`${d}/${m}/${y}`);
+    setOpen(false);
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 6 }}>{label}</Text>
+      <TouchableOpacity onPress={() => setOpen(true)} style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, minHeight: 44, justifyContent: 'center' }}>
+        <Text style={{ color: value ? '#111827' : '#9CA3AF', fontWeight: value ? '700' : '400' }}>
+          {value || 'Selecionar data'}
+        </Text>
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', padding: 16 }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ backgroundColor: '#fff', borderRadius: 12, maxHeight: '80%', padding: 12 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>{label}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity onPress={clear}>
+                  <Text style={{ color: colors.brandPrimary, fontWeight: '700' }}>Limpar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={setToday}>
+                  <Text style={{ color: colors.brandPrimary, fontWeight: '700' }}>Hoje</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={confirm} style={{ backgroundColor: colors.brandPrimary, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 }}>
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>Dia</Text>
+                <ScrollView>
+                  {dayOptions.map((o) => (
+                    <TouchableOpacity key={o.value} onPress={() => setSelDay(o.value)} style={{ paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, backgroundColor: selDay === o.value ? '#EEF2FF' : 'transparent' }}>
+                      <Text style={{ color: selDay === o.value ? colors.brandPrimary : '#111827', fontWeight: selDay === o.value ? '700' : '400' }}>{o.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>Mês</Text>
+                <ScrollView>
+                  {monthOptions.map((o) => (
+                    <TouchableOpacity key={o.value} onPress={() => setSelMonth(o.value)} style={{ paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, backgroundColor: selMonth === o.value ? '#EEF2FF' : 'transparent' }}>
+                      <Text style={{ color: selMonth === o.value ? colors.brandPrimary : '#111827', fontWeight: selMonth === o.value ? '700' : '400' }}>{o.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>Ano</Text>
+                <ScrollView>
+                  {yearOptions.map((o) => (
+                    <TouchableOpacity key={o.value} onPress={() => setSelYear(o.value)} style={{ paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, backgroundColor: selYear === o.value ? '#EEF2FF' : 'transparent' }}>
+                      <Text style={{ color: selYear === o.value ? colors.brandPrimary : '#111827', fontWeight: selYear === o.value ? '700' : '400' }}>{o.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+}
+
+function DateSelect({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const { dd, mm, yyyy } = parseDateParts(value);
+
+  const dayOptions: Option[] = Array.from({ length: 31 }, (_, i) => {
+    const v = pad2(i + 1);
+    return { value: v, label: v };
+  });
+  const monthOptions: Option[] = Array.from({ length: 12 }, (_, i) => {
+    const v = pad2(i + 1);
+    return { value: v, label: v };
+  });
+  const currentYear = new Date().getFullYear();
+  const yearOptions: Option[] = Array.from({ length: (currentYear + 10) - 1930 + 1 }, (_, idx) => {
+    const y = String((currentYear + 10) - idx);
+    return { value: y, label: y };
+  });
+
+  function update(part: 'dd' | 'mm' | 'yyyy', newVal: string) {
+    const base = parseDateParts(value);
+    const next = { ...base, [part]: newVal } as { dd: string; mm: string; yyyy: string };
+    if (next.dd && next.mm && next.yyyy) onChange(`${next.dd}/${next.mm}/${next.yyyy}`);
+    else onChange('');
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 6 }}>{label}</Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <SelectField label="Dia" value={dd} placeholder="DD" options={dayOptions} onChange={(v) => update('dd', v)} />
+        <SelectField label="Mês" value={mm} placeholder="MM" options={monthOptions} onChange={(v) => update('mm', v)} />
+        <SelectField label="Ano" value={yyyy} placeholder="AAAA" options={yearOptions} onChange={(v) => update('yyyy', v)} />
+      </View>
+    </View>
+  );
+}
+
+function computeAuthorities(docType: typeof DOC_TYPES[number], uf: string, city: string): Option[] {
+  if (!uf) return [];
+  const opts: Option[] = [];
+  if (docType === 'CNH') {
+    opts.push({ value: `DETRAN-${uf}`, label: `DETRAN-${uf}` });
+    if (city) opts.push({ value: `CIRETRAN-${uf}-${city}`, label: `CIRETRAN ${city}/${uf}` });
+  } else if (docType === 'RG') {
+    opts.push({ value: `SSP-${uf}`, label: `SSP-${uf}` });
+    opts.push({ value: `PC-${uf}`, label: `Polícia Civil - PC-${uf}` });
+    opts.push({ value: `IFP-${uf}`, label: `IFP-${uf}` });
+    opts.push({ value: `IGP-${uf}`, label: `IGP-${uf}` });
+    if (city) opts.push({ value: `SSP-${uf}-${city}`, label: `SSP ${city}/${uf}` });
+  }
+  return opts;
 }
