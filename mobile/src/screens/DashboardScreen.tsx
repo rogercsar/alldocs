@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useLayoutEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getDocuments, initDb, countDocuments, deleteDocument } from '../storage/db';
 import { syncDocumentDelete } from '../storage/sync';
@@ -192,7 +192,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
     const icon = iconForType(item.type);
     const hasId = typeof item.id === 'number';
     return (
-      <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:2 }}>
+      <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation: menuFor === item.id ? 12 : 2, zIndex: menuFor === item.id ? 1000 : 0, overflow:'visible' }}>
         <View style={{ flexDirection:'row', alignItems:'center' }}>
           <View style={{ width:36, height:36, borderRadius:8, backgroundColor:'#F9FAFB', alignItems:'center', justifyContent:'center', marginRight:10 }}>
             <Ionicons name={icon.name} size={22} color={icon.color} />
@@ -210,7 +210,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
         <Text style={{ fontSize:12, color:'#374151', marginTop:10 }}>{item.number || '—'}</Text>
 
         {menuFor === item.id && (
-            <Pressable onStartShouldSetResponder={() => true} style={{ position:'absolute', right:14, top:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:10, shadowColor:'#000', shadowOpacity:0.08, shadowRadius:14, elevation:6, zIndex:100 }}>
+            <Pressable onStartShouldSetResponder={() => true} style={{ position:'absolute', right:14, top:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:10, shadowColor:'#000', shadowOpacity:0.08, shadowRadius:14, elevation:12, zIndex: 2000 }}>
               <TouchableOpacity onPress={() => { setMenuFor(null); onEdit(item); }} style={{ paddingVertical:10, paddingHorizontal:14, flexDirection:'row', alignItems:'center' }}>
                 <Ionicons name='create-outline' size={18} color={'#111827'} style={{ marginRight:8 }} />
                 <Text style={{ fontSize:14, color:'#111827', fontWeight:'600' }}>Editar</Text>
