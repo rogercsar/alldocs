@@ -7,6 +7,7 @@ import { supabase } from '../supabase';
 import { syncDocumentAddOrUpdate } from '../storage/sync';
 import type { DocumentItem } from '../types';
 import { colors } from '../theme/colors';
+import DateTimePicker from '@react-native-community/datetimepicker'
 
 const primaryColor = colors.brandPrimary;
 const bgColor = colors.bg;
@@ -186,8 +187,8 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
             <View style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', padding:12, borderRadius:12, marginBottom:16 }}>
               <Text style={{ fontSize: 14, color:'#374151', marginBottom: 8, fontWeight:'700' }}>Informações do Documento</Text>
               <View style={{ flexDirection:'row', gap:8 }}>
-                <DateSelect label="Data de Expedição" value={issueDate} onChange={setIssueDate} />
-                <DateSelect label="Data de Vencimento" value={expiryDate} onChange={setExpiryDate} />
+                <AdaptiveDateField label="Data de Expedição" value={issueDate} onChange={setIssueDate} />
+                <AdaptiveDateField label="Data de Vencimento" value={expiryDate} onChange={setExpiryDate} />
               </View>
               <View style={{ flexDirection:'row', gap:8, marginTop: 8 }}>
                 <View style={{ flex:1 }}>
@@ -345,7 +346,10 @@ function parseDateParts(str: string | undefined) {
 
 function SelectField({ label, value, placeholder, options, onChange, disabled, loading }: { label: string; value?: string; placeholder?: string; options: Option[]; onChange: (v: string) => void; disabled?: boolean; loading?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  useEffect(() => { if (!open) setQuery(''); }, [open]);
   const selected = options.find((o) => o.value === value);
+  const filtered = options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()));
   return (
     <View style={{ flex: 1 }}>
       <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 6 }}>{label}</Text>
@@ -371,15 +375,18 @@ function SelectField({ label, value, placeholder, options, onChange, disabled, l
                 <Text style={{ color: colors.brandPrimary, fontWeight: '700' }}>Limpar</Text>
               </TouchableOpacity>
             </View>
+            <View style={{ marginBottom: 8 }}>
+              <TextInput value={query} onChangeText={setQuery} placeholder="Digite para filtrar…" placeholderTextColor="#9CA3AF" style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10 }} />
+            </View>
             <ScrollView>
-              {options.map((o) => (
+              {filtered.map((o) => (
                 <TouchableOpacity key={o.value} onPress={() => { onChange(o.value); setOpen(false); }} style={{ paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8 }}>
                   <Text style={{ color: '#111827', fontSize: 15 }}>{o.label}</Text>
                 </TouchableOpacity>
               ))}
-              {options.length === 0 && (
+              {filtered.length === 0 && (
                 <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-                  <Text style={{ color: '#6B7280' }}>Sem opções</Text>
+                  <Text style={{ color: '#6B7280' }}>Nenhum resultado</Text>
                 </View>
               )}
             </ScrollView>
@@ -557,4 +564,54 @@ function computeAuthorities(docType: typeof DOC_TYPES[number], uf: string, city:
     if (city) opts.push({ value: `SSP-${uf}-${city}`, label: `SSP ${city}/${uf}` });
   }
   return opts;
+}
+
+function AdaptiveDateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  if (Platform.OS === 'web') {
+    return <DateField label={label} value={value} onChange={onChange} />;
+  }
+  const { dd, mm, yyyy } = parseDateParts(value);
+  const [show, setShow] = useState(false);
+  const currentYear = new Date().getFullYear();
+  const selectedDate = dd && mm && yyyy ? new Date(parseInt(yyyy, 10), parseInt(mm, 10) - 1, parseInt(dd, 10)) : new Date();
+  function onPick(_: any, date?: Date) {
+    // Android fecha automaticamente, iOS pode ser inline
+    if (Platform.OS !== 'ios') setShow(false);
+    if (date) {
+      const d = pad2(date.getDate());
+      const m = pad2(date.getMonth() + 1);
+      const y = String(date.getFullYear());
+      onChange(`${d}/${m}/${y}`);
+    }
+  }
+  function clear() { onChange(''); if (Platform.OS !== 'ios') setShow(false); }
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 6 }}>{label}</Text>
+      <TouchableOpacity onPress={() => setShow(true)} style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, minHeight: 44, justifyContent: 'center' }}>
+        <Text style={{ color: value ? '#111827' : '#9CA3AF', fontWeight: value ? '700' : '400' }}>{value || 'Selecionar data'}</Text>
+      </TouchableOpacity>
+      {show && (
+        <View style={{ marginTop: 8 }}>
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            onChange={onPick}
+            minimumDate={new Date(1930, 0, 1)}
+            maximumDate={new Date(currentYear + 10, 11, 31)}
+          />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+            <TouchableOpacity onPress={clear}>
+              <Text style={{ color: colors.brandPrimary, fontWeight: '700' }}>Limpar</Text>
+            </TouchableOpacity>
+            {Platform.OS !== 'ios' && (
+              <TouchableOpacity onPress={() => setShow(false)} style={{ backgroundColor: colors.brandPrimary, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 }}>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>OK</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
+    </View>
+  );
 }

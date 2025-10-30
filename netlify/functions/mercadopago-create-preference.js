@@ -1,8 +1,6 @@
-const mercadopago = require('mercadopago');
+const { MercadoPagoConfig, Preference } = require('mercadopago');
 
 const ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
-
-mercadopago.configure({ access_token: ACCESS_TOKEN });
 
 exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
@@ -12,6 +10,12 @@ exports.handler = async function(event) {
     return json({ error: 'Method not allowed' }, 405);
   }
   try {
+    if (!ACCESS_TOKEN) {
+      throw new Error('Missing MP_ACCESS_TOKEN environment variable');
+    }
+    const client = new MercadoPagoConfig({ accessToken: ACCESS_TOKEN });
+    const preferenceApi = new Preference(client);
+
     const payload = event.body ? JSON.parse(event.body) : {};
     const userId = payload.userId;
     const email = payload.email || undefined;
@@ -36,8 +40,8 @@ exports.handler = async function(event) {
       external_reference: userId,
     };
 
-    const { body } = await mercadopago.preferences.create(preference);
-    return json({ id: body.id, init_point: body.init_point });
+    const result = await preferenceApi.create({ body: preference });
+    return json({ id: result.id, init_point: result.init_point });
   } catch (e) {
     console.error(e);
     return json({ error: e.message }, 500);
