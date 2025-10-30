@@ -210,7 +210,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
         <Text style={{ fontSize:12, color:'#374151', marginTop:10 }}>{item.number || '—'}</Text>
 
         {menuFor === item.id && (
-            <View style={{ position:'absolute', right:14, top:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:10, shadowColor:'#000', shadowOpacity:0.08, shadowRadius:14, elevation:3, zIndex:20 }}>
+            <Pressable onStartShouldSetResponder={() => true} style={{ position:'absolute', right:14, top:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:10, shadowColor:'#000', shadowOpacity:0.08, shadowRadius:14, elevation:6, zIndex:100 }}>
               <TouchableOpacity onPress={() => { setMenuFor(null); onEdit(item); }} style={{ paddingVertical:10, paddingHorizontal:14, flexDirection:'row', alignItems:'center' }}>
                 <Ionicons name='create-outline' size={18} color={'#111827'} style={{ marginRight:8 }} />
                 <Text style={{ fontSize:14, color:'#111827', fontWeight:'600' }}>Editar</Text>
@@ -225,7 +225,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
                 <Ionicons name='trash-outline' size={18} color={dangerColor} style={{ marginRight:8 }} />
                 <Text style={{ fontSize:14, color: dangerColor, fontWeight:'600' }}>Excluir</Text>
               </TouchableOpacity>
-            </View>
+            </Pressable>
           )}
       </TouchableOpacity>
     );
@@ -251,18 +251,54 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   }, [userId]);
 
   const deviceLimitReached = deviceCount !== null && deviceLimit !== null && deviceCount >= deviceLimit;
+  const notifMessages: string[] = [];
+  if (deviceLimitReached) notifMessages.push(`Limite de dispositivos atingido (${deviceCount}/${deviceLimit}). Faça upgrade para adicionar mais.`);
+  if (limitReached) notifMessages.push('Limite gratuito de 4 documentos atingido. Desbloqueie Premium.');
+
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: '',
+      headerTitleAlign: 'left',
+      headerLeft: () => (
+        <View style={{ flexDirection:'row', alignItems:'center', paddingLeft: 8 }}>
+          {logoError ? (
+            <Ionicons name='document-text' size={28} color={colors.text} />
+          ) : (
+            <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:70, height:70 }} />
+          )}
+        </View>
+      ),
+      headerRight: () => (
+        <View style={{ flexDirection:'row', alignItems:'center' }}>
+          <View style={{ position:'relative', paddingVertical:6, paddingHorizontal:10, marginRight: 6 }}>
+            <TouchableOpacity onPress={() => setNotificationsOpen(true)}>
+              <Ionicons name={notifMessages.length ? 'notifications' : 'notifications-outline'} size={22} color={colors.text} />
+            </TouchableOpacity>
+            {notifMessages.length > 0 && (
+              <View style={{ position:'absolute', top:2, right:6, backgroundColor: dangerColor, borderRadius:9, minWidth:18, height:18, alignItems:'center', justifyContent:'center', paddingHorizontal:3 }}>
+                <Text style={{ color:'#fff', fontSize:10, fontWeight:'800' }}>{notifMessages.length > 9 ? '9+' : String(notifMessages.length)}</Text>
+              </View>
+            )}
+          </View>
+          <TouchableOpacity onPress={() => setHeaderMenuOpen(true)} style={{ paddingVertical:6, paddingHorizontal:10, marginRight: 10 }}>
+            <Ionicons name='ellipsis-vertical' size={22} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [navigation, logoError, notifMessages.length]);
+
   return (
     <View style={{ flex:1, backgroundColor: bgColor }}>
 
-      {deviceLimitReached && (
-        <TouchableOpacity onPress={onUpgrade} style={{ marginHorizontal:16, marginBottom:8, padding:12, backgroundColor: colors.warningBg, borderRadius:10, borderWidth:1, borderColor: colors.warning }}>
-          <Text style={{ color:'#92400E', fontWeight:'600' }}>Limite de dispositivos atingido ({deviceCount}/{deviceLimit}). Faça upgrade para adicionar mais.</Text>
-        </TouchableOpacity>
-      )}
-
-      {limitReached && (
-        <TouchableOpacity onPress={onUpgrade} style={{ marginHorizontal:16, marginBottom:8, padding:12, backgroundColor: colors.warningBg, borderRadius:10, borderWidth:1, borderColor: colors.warning }}>
-          <Text style={{ color:'#92400E', fontWeight:'600' }}>Limite gratuito de 4 documentos atingido. Desbloqueie Premium.</Text>
+      {notifMessages.length > 0 && (
+        <TouchableOpacity onPress={() => setNotificationsOpen(true)} style={{ marginHorizontal:16, marginBottom:8, paddingVertical:8, paddingHorizontal:12, backgroundColor:'#FEF9C3', borderRadius:8, borderWidth:1, borderColor:'#FDE68A' }}>
+          <View style={{ flexDirection:'row', alignItems:'center' }}>
+            <Ionicons name='alert-circle-outline' size={18} color={'#92400E'} style={{ marginRight:6 }} />
+            <Text style={{ color:'#92400E' }}>Você tem {notifMessages.length} notificação(ões). Toque para ver.</Text>
+          </View>
         </TouchableOpacity>
       )}
 
@@ -290,7 +326,37 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
       {menuFor !== null && (
         <Pressable onPress={() => setMenuFor(null)} style={{ position:'absolute', left:0, right:0, top:0, bottom:0, zIndex:10 }} />
       )}
-      
+
+      {/* Modal de notificações */}
+      <Modal visible={notificationsOpen} transparent animationType="fade" onRequestClose={() => setNotificationsOpen(false)}>
+        <Pressable onPress={() => setNotificationsOpen(false)} style={{ flex:1, backgroundColor:'rgba(0,0,0,0.2)', justifyContent:'center', padding:16 }}>
+          <Pressable onStartShouldSetResponder={() => true} style={{ backgroundColor:'#fff', borderRadius:12, padding:12, maxHeight:'70%' }}>
+            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <Text style={{ fontSize:16, fontWeight:'800', color:'#111827' }}>Notificações</Text>
+              <TouchableOpacity onPress={() => setNotificationsOpen(false)}>
+                <Text style={{ color: colors.brandPrimary, fontWeight:'700' }}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+            {notifMessages.length === 0 ? (
+              <Text style={{ color:'#6B7280' }}>Sem notificações no momento.</Text>
+            ) : (
+              <View>
+                {notifMessages.map((msg, idx) => (
+                  <View key={idx} style={{ paddingVertical:8, flexDirection:'row', alignItems:'flex-start' }}>
+                    <Ionicons name='information-circle-outline' size={18} color={colors.brandPrimary} style={{ marginRight:8, marginTop:2 }} />
+                    <Text style={{ color:'#111827' }}>{msg}</Text>
+                  </View>
+                ))}
+                <View style={{ height:8 }} />
+                <TouchableOpacity onPress={onUpgrade} style={{ alignSelf:'flex-start', borderWidth:1, borderColor: colors.brandPrimary, borderRadius:8, paddingVertical:8, paddingHorizontal:12 }}>
+                  <Text style={{ color: colors.brandPrimary, fontWeight:'700' }}>Ver planos</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {headerMenuOpen && (
         <>
           <Pressable onPress={() => setHeaderMenuOpen(false)} style={{ position:'absolute', left:0, right:0, top:0, bottom:0, zIndex:30, backgroundColor:'rgba(17,24,39,0.03)' }} />
