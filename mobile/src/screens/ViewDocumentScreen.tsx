@@ -98,8 +98,7 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
           <Text numberOfLines={1} ellipsizeMode='tail' style={{ fontSize: 22, fontWeight: '800', color: '#111827', marginRight: 8, flexShrink: 1 }}>{document.name}</Text>
           <View style={{ borderWidth: 1, borderColor: template.accentColor, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 9999, flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name={template.icon as any} size={16} color={template.accentColor} style={{ marginRight: 6 }} />
-            <Text style={{ color: template.accentColor, fontWeight: '700' }}></Text>
+      
           </View>
         </View>
         {Platform.OS === 'web' ? (
