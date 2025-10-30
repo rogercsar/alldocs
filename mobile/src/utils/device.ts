@@ -75,3 +75,31 @@ export async function registerDeviceForUser(userId: string): Promise<{ ok: boole
     console.warn('Falha ao registrar dispositivo (não crítico)', e);
   }
 }
+
+// Preferência: usar bloqueio por PIN/Biometria do dispositivo
+const LOCK_KEY = 'evdocs_lock_enabled_v1';
+
+export async function getDeviceLockEnabled(): Promise<boolean> {
+  try {
+    if (Platform.OS === 'web') {
+      const val = typeof localStorage !== 'undefined' ? localStorage.getItem(LOCK_KEY) : null;
+      if (val === null) return true; // padrão: ativado
+      return val === 'true';
+    }
+    const val = await SecureStore.getItemAsync(LOCK_KEY);
+    if (val === null) return true; // padrão: ativado
+    return val === 'true';
+  } catch {
+    return true;
+  }
+}
+
+export async function setDeviceLockEnabled(enabled: boolean): Promise<void> {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(LOCK_KEY, enabled ? 'true' : 'false');
+      return;
+    }
+    await SecureStore.setItemAsync(LOCK_KEY, enabled ? 'true' : 'false', { keychainService: LOCK_KEY });
+  } catch {}
+}

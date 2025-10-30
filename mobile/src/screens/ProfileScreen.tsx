@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Switch, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { colors } from '../theme/colors';
-import { getOrCreateDeviceId } from '../utils/device';
+import { getOrCreateDeviceId, getDeviceLockEnabled, setDeviceLockEnabled } from '../utils/device';
 
 export default function ProfileScreen({ navigation }: any) {
   const [email, setEmail] = useState<string>('');
@@ -13,6 +13,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [devicesList, setDevicesList] = useState<Array<{ device_id: string; platform?: string; label?: string; last_seen?: string }>>([]);
   const [currentDeviceId, setCurrentDeviceId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [lockEnabled, setLockEnabledState] = useState<boolean | null>(null);
 
   const primary = colors.brandPrimary;
   const accent = colors.brandAccent;
@@ -119,6 +120,33 @@ export default function ProfileScreen({ navigation }: any) {
     );
   }
 
+  // Inicializa preferência do bloqueio por dispositivo
+  useEffect(() => {
+    (async () => {
+      try {
+        const enabled = await getDeviceLockEnabled();
+        setLockEnabledState(enabled);
+      } catch {}
+    })();
+  }, []);
+
+  async function onToggleLock(val: boolean) {
+    try {
+      if (Platform.OS === 'web') {
+        Alert.alert('Indisponível no navegador', 'A autenticação pelo dispositivo não se aplica no web.');
+      }
+      await setDeviceLockEnabled(val);
+      setLockEnabledState(val);
+      if (val) {
+        Alert.alert('Bloqueio ativado', 'Na próxima abertura, o app pedirá autenticação do dispositivo.');
+      } else {
+        Alert.alert('Bloqueio desativado', 'O app não solicitará autenticação do dispositivo.');
+      }
+    } catch (e: any) {
+      Alert.alert('Erro', e?.message || 'Falha ao atualizar preferência');
+    }
+  }
+
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -171,6 +199,22 @@ export default function ProfileScreen({ navigation }: any) {
               </View>
 
               <View style={{ height:1, backgroundColor: border, marginVertical:12 }} />
+
+              {/* Segurança */}
+              <View style={{ borderWidth:1, borderColor: border, backgroundColor: colors.surface, borderRadius:12, padding:12, marginBottom:12 }}>
+                <View style={{ flexDirection:'row', alignItems:'center' }}>
+                  <Ionicons name='lock-closed' size={18} color={colors.mutedIcon} style={{ marginRight:8 }} />
+                  <Text style={{ color: text, fontWeight:'700', flex:1 }}>Usar PIN/Biometria do dispositivo</Text>
+                  {lockEnabled === null ? (
+                    <ActivityIndicator />
+                  ) : (
+                    <Switch value={!!lockEnabled} onValueChange={onToggleLock} />
+                  )}
+                </View>
+                <Text style={{ color: mutedText, fontSize:12, marginTop:6 }}>
+                  Quando ativo, você precisará se autenticar com o PIN/biometria do dispositivo para abrir o app.
+                </Text>
+              </View>
 
               <Text style={{ color: text, fontWeight:'800', marginBottom:8 }}>Seus dispositivos</Text>
               {devicesList.length === 0 ? (

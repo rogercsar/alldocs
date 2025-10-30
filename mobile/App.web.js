@@ -13,7 +13,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import { supabase } from './src/supabase';
-import { registerDeviceForUser } from './src/utils/device';
+import { registerDeviceForUser, getDeviceLockEnabled } from './src/utils/device';
 
 const Stack = createNativeStackNavigator();
 
@@ -21,6 +21,7 @@ export default function App() {
   const [unlocked, setUnlocked] = useState(false);
   const [ready, setReady] = useState(false);
   const [userId, setUserId] = useState('');
+  const [lockEnabled, setLockEnabled] = useState(true);
   const navRef = useRef(null);
 
   useEffect(() => {
@@ -32,6 +33,15 @@ export default function App() {
       setUserId(session?.user?.id || 'anonymous');
     });
     return () => { sub.subscription?.unsubscribe?.(); };
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const enabled = await getDeviceLockEnabled();
+        setLockEnabled(enabled);
+      } catch {}
+    })();
   }, []);
 
   useEffect(() => {
@@ -50,7 +60,7 @@ export default function App() {
   if (!ready) return null;
 
   const isAnonymous = !userId || userId === 'anonymous';
-  if (!isAnonymous && !unlocked) {
+  if (!isAnonymous && lockEnabled && !unlocked) {
     return <LockScreen onUnlocked={() => setUnlocked(true)} />;
   }
 
@@ -102,7 +112,7 @@ export default function App() {
           )}
         </Stack.Screen>
         <Stack.Screen name="Upgrade" options={{ title: 'Upgrade' }}>
-          {(props) => <UpgradeScreen onClose={() => props.navigation.goBack()} />}
+          {(props) => <UpgradeScreen onClose={() => props.navigation.replace('Dashboard')} />}
         </Stack.Screen>
         <Stack.Screen name="Login" options={{ headerTitle: 'Entrar', headerBackTitle: 'Voltar' }}>
           {(props) => (
@@ -111,7 +121,10 @@ export default function App() {
         </Stack.Screen>
         <Stack.Screen name="Signup" options={{ headerTitle: 'Criar conta', headerBackTitle: 'Voltar' }}>
           {(props) => (
-            <SignupScreen {...props} onDone={() => props.navigation.replace('Dashboard')} />
+            <SignupScreen
+              {...props}
+              onDone={() => props.navigation.replace(props.route?.params?.redirectToUpgrade ? 'Upgrade' : 'Dashboard')}
+            />
           )}
         </Stack.Screen>
         <Stack.Screen name="Profile" options={{ headerTitle: 'Perfil' }}>

@@ -50,7 +50,7 @@ export default function PlansScreen({ navigation }: any) {
           <Feature label='Acesso prioritário a novidades' />
           <Feature label='Suporte prioritário' />
           <View style={{ height: 10 }} />
-          <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={{ backgroundColor: primary, borderRadius: 10, paddingVertical: 12, alignItems:'center' }}>
+          <TouchableOpacity onPress={() => navigation.navigate('Signup', { redirectToUpgrade: true })} style={{ backgroundColor: primary, borderRadius: 10, paddingVertical: 12, alignItems:'center' }}>
             <Text style={{ color: '#fff', fontWeight:'800' }}>Assinar Premium</Text>
           </TouchableOpacity>
         </View>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, Linking, useWindowDimensions, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import TestimonialsCarousel from '../components/TestimonialsCarousel';
 
 type Props = {
   onLogin: (mode: 'login' | 'signup') => void;
@@ -109,8 +110,16 @@ export default function LandingScreen({ onLogin, onViewPlans }: Props) {
           </Text>
         </View>
 
-        {/* Footer destacado */}
-        <View style={{ alignItems:'center', paddingVertical: 18, marginTop: 16, backgroundColor: primaryDark, borderRadius: 16 }}>
+        {/* Testimonials */}
+        <View style={{ marginTop: 16 }}>
+          <Text style={{ fontSize:18, fontWeight:'800', color: text, marginBottom:8, textAlign:'center' }}>O que dizem nossos usuários</Text>
+          <TestimonialsCarousel />
+        </View>
+
+      </View>
+      {/* Footer full-width */}
+      <View style={{ width:'100%', backgroundColor: primaryDark, paddingVertical: 18, marginTop: 16, marginLeft: -containerPad, marginRight: -containerPad }}>
+        <View style={{ width:'100%', maxWidth: maxW, alignSelf:'center', alignItems:'center' }}>
           <Text style={{ color: '#fff', fontWeight:'700' }}>Pronto para começar?</Text>
           <View style={{ height:8 }} />
           <View style={{ flexDirection:'row' }}>
