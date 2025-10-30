@@ -43,6 +43,12 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
   const [backUri, setBackUri] = useState<string | undefined>(document?.backImageUri || undefined);
   const [saving, setSaving] = useState(false);
   const [docType, setDocType] = useState<typeof DOC_TYPES[number]>(document?.type as any || 'RG');
+  // Campos RG/CNH
+  const [issueDate, setIssueDate] = useState(document?.issueDate || '');
+  const [expiryDate, setExpiryDate] = useState(document?.expiryDate || '');
+  const [issuingState, setIssuingState] = useState(document?.issuingState || '');
+  const [issuingCity, setIssuingCity] = useState(document?.issuingCity || '');
+  const [issuingAuthority, setIssuingAuthority] = useState(document?.issuingAuthority || '');
 
   useEffect(() => {
     setName(document?.name || '');
@@ -50,6 +56,11 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     setFrontUri(document?.frontImageUri || undefined);
     setBackUri(document?.backImageUri || undefined);
     setDocType((document?.type as any) || 'RG');
+    setIssueDate(document?.issueDate || '');
+    setExpiryDate(document?.expiryDate || '');
+    setIssuingState(document?.issuingState || '');
+    setIssuingCity(document?.issuingCity || '');
+    setIssuingAuthority(document?.issuingAuthority || '');
   }, [document?.id]);
 
   const template = getTemplate(docType);
@@ -68,14 +79,22 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     if (!res.canceled && res.assets?.[0]?.uri) setter(res.assets[0].uri);
   }
 
+  function shouldShowMetadata(t: typeof DOC_TYPES[number]) {
+    return t === 'RG' || t === 'CNH';
+  }
+
   async function save() {
     if (!name || !number) { Alert.alert('Campos obrigatórios', 'Informe nome e número'); return; }
     setSaving(true);
 
+    const meta = shouldShowMetadata(docType)
+      ? { issueDate: issueDate || '', expiryDate: expiryDate || '', issuingState: issuingState || '', issuingCity: issuingCity || '', issuingAuthority: issuingAuthority || '' }
+      : { issueDate: '', expiryDate: '', issuingState: '', issuingCity: '', issuingAuthority: '' };
+
     if (document?.id) {
       const f = frontUri ? await saveImageToLocal(frontUri) : (document.frontImageUri || '');
       const b = backUri ? await saveImageToLocal(backUri) : (document.backImageUri || '');
-      await updateDocument(document.id, { name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0 });
+      await updateDocument(document.id, { name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
       setSaving(false);
       try {
         await syncDocumentAddOrUpdate({ id: document.id, name, number, frontImageUri: f, backImageUri: b }, userId);
@@ -86,7 +105,7 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
 
     const f = frontUri ? await saveImageToLocal(frontUri) : '';
     const b = backUri ? await saveImageToLocal(backUri) : '';
-    const id = await addDocument({ name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0 });
+    const id = await addDocument({ name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
     setSaving(false);
     try {
       await syncDocumentAddOrUpdate({ id, name, number, frontImageUri: f, backImageUri: b }, userId);
@@ -117,6 +136,36 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
 
           <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.numberLabel}</Text>
           <TextInput value={number} onChangeText={setNumber} placeholder={template.numberPlaceholder} placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:16 }} />
+
+          {shouldShowMetadata(docType) && (
+            <View style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', padding:12, borderRadius:12, marginBottom:16 }}>
+              <Text style={{ fontSize: 14, color:'#374151', marginBottom: 8, fontWeight:'700' }}>Informações do Documento</Text>
+              <View style={{ flexDirection:'row', gap:8 }}>
+                <View style={{ flex:1 }}>
+                  <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>Data de Expedição</Text>
+                  <TextInput value={issueDate} onChangeText={setIssueDate} placeholder='DD/MM/AAAA' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10, marginBottom:8 }} />
+                </View>
+                <View style={{ flex:1 }}>
+                  <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>Data de Vencimento</Text>
+                  <TextInput value={expiryDate} onChangeText={setExpiryDate} placeholder='DD/MM/AAAA' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10, marginBottom:8 }} />
+                </View>
+              </View>
+              <View style={{ flexDirection:'row', gap:8 }}>
+                <View style={{ flex:1 }}>
+                  <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>UF</Text>
+                  <TextInput value={issuingState} onChangeText={(v)=> setIssuingState(v.toUpperCase().slice(0,2))} placeholder='UF' placeholderTextColor='#9CA3AF' maxLength={2} style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10, marginBottom:8 }} />
+                </View>
+                <View style={{ flex:2 }}>
+                  <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>Cidade</Text>
+                  <TextInput value={issuingCity} onChangeText={setIssuingCity} placeholder='Cidade emissora' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10, marginBottom:8 }} />
+                </View>
+              </View>
+              <View>
+                <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>Órgão Emissor</Text>
+                <TextInput value={issuingAuthority} onChangeText={setIssuingAuthority} placeholder='Ex.: SSP' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10 }} />
+              </View>
+            </View>
+          )}
 
           {template.imagesLayout === 'sideBySide' ? (
             <View style={{ flexDirection:'row', gap:8 }}>

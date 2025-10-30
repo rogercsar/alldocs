@@ -25,7 +25,18 @@ export async function saveImageToLocal(srcUri: string): Promise<string> {
 export function addDocument(item: DocumentItem): Promise<number> {
   const now = Date.now();
   const id = memId++;
-  memory.push({ ...item, id, updatedAt: now });
+  const normalized: DocumentItem = {
+    ...item,
+    id,
+    type: item.type || 'Outros',
+    issueDate: item.issueDate || '',
+    expiryDate: item.expiryDate || '',
+    issuingState: item.issuingState || '',
+    issuingCity: item.issuingCity || '',
+    issuingAuthority: item.issuingAuthority || '',
+    updatedAt: now,
+  };
+  memory.push(normalized);
   return Promise.resolve(id);
 }
 

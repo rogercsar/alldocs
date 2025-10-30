@@ -99,7 +99,7 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
           <Text numberOfLines={1} ellipsizeMode='tail' style={{ fontSize: 22, fontWeight: '800', color: '#111827', marginRight: 8, flexShrink: 1 }}>{document.name}</Text>
           <View style={{ borderWidth: 1, borderColor: template.accentColor, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 9999, flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name={template.icon as any} size={16} color={template.accentColor} style={{ marginRight: 6 }} />
-            <Text style={{ color: template.accentColor, fontWeight: '700' }}>{type}</Text>
+            <Text style={{ color: template.accentColor, fontWeight: '700' }}></Text>
           </View>
         </View>
         {Platform.OS === 'web' ? (
@@ -145,6 +145,36 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
         <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.numberLabel}</Text>
         <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>{numberDisplay}</Text>
       </View>
+
+      {(type === 'RG' || type === 'CNH') && (
+        <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8, fontWeight: '700' }}>Informações do Documento</Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, color: '#6B7280' }}>Data de Expedição</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issueDate || '—'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, color: '#6B7280' }}>Data de Vencimento</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.expiryDate || '—'}</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, color: '#6B7280' }}>UF</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingState || '—'}</Text>
+            </View>
+            <View style={{ flex: 2 }}>
+              <Text style={{ fontSize: 13, color: '#6B7280' }}>Cidade</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingCity || '—'}</Text>
+            </View>
+          </View>
+          <View>
+            <Text style={{ fontSize: 13, color: '#6B7280' }}>Órgão Emissor</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingAuthority || '—'}</Text>
+          </View>
+        </View>
+      )}
 
       {document.frontImageUri && document.backImageUri && template.layout === 'sideBySide' ? (
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>

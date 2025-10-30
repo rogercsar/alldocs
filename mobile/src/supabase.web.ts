@@ -11,14 +11,18 @@ function createStub() {
   return {
     auth: {
       getSession: async () => ({ data: { session: currentUser ? { user: currentUser } : null } }),
+      getUser: async () => ({ data: { user: currentUser }, error: null as any }),
       onAuthStateChange: (cb: any) => {
         listeners.push(cb);
         return { data: { subscription: { unsubscribe: () => {} } } };
       },
       signOut: async () => { currentUser = null; notify('SIGNED_OUT'); },
-      signUp: async (_params: any) => { currentUser = { id: 'web-demo' }; notify('SIGNED_IN'); return { data: { user: currentUser }, error: null }; },
-      signInWithPassword: async (_params: any) => { currentUser = { id: 'web-demo' }; notify('SIGNED_IN'); return { data: { session: { user: currentUser } }, error: null }; },
-      signInWithOtp: async (_params: any) => { currentUser = { id: 'web-demo' }; notify('SIGNED_IN'); return { data: { user: currentUser }, error: null }; },
+      signUp: async (_params: any) => { currentUser = { id: 'web-demo' }; notify('SIGNED_IN'); return { data: { user: currentUser }, error: null };
+      },
+      signInWithPassword: async (_params: any) => { currentUser = { id: 'web-demo' }; notify('SIGNED_IN'); return { data: { session: { user: currentUser } }, error: null };
+      },
+      signInWithOtp: async (_params: any) => { currentUser = { id: 'web-demo' }; notify('SIGNED_IN'); return { data: { user: currentUser }, error: null };
+      },
       resetPasswordForEmail: async (_email: string, _opts: any) => ({ data: { ok: true }, error: null }),
     },
     storage: {

@@ -23,12 +23,22 @@ export function initDb() {
         frontImageUri TEXT,
         backImageUri TEXT,
         type TEXT,
+        issueDate TEXT,
+        expiryDate TEXT,
+        issuingState TEXT,
+        issuingCity TEXT,
+        issuingAuthority TEXT,
         synced INTEGER DEFAULT 0,
         updatedAt INTEGER
       );`
     );
-    // tenta adicionar coluna 'type' em bases existentes
+    // tenta adicionar colunas em bases existentes
     tx.executeSql('ALTER TABLE documents ADD COLUMN type TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN issueDate TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN expiryDate TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN issuingState TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN issuingCity TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN issuingAuthority TEXT;', [], () => {}, () => false);
   });
 }
 
@@ -88,8 +98,21 @@ export function addDocument(item: DocumentItem): Promise<number> {
     const now = Date.now();
     db.transaction(tx => {
       tx.executeSql(
-        'INSERT INTO documents (name, number, frontImageUri, backImageUri, type, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?);',
-        [item.name, item.number, item.frontImageUri || '', item.backImageUri || '', item.type || 'Outros', item.synced ? 1 : 0, now],
+        'INSERT INTO documents (name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
+        [
+          item.name,
+          item.number,
+          item.frontImageUri || '',
+          item.backImageUri || '',
+          item.type || 'Outros',
+          item.issueDate || '',
+          item.expiryDate || '',
+          item.issuingState || '',
+          item.issuingCity || '',
+          item.issuingAuthority || '',
+          item.synced ? 1 : 0,
+          now,
+        ],
         (_, result) => resolve(result.insertId as number),
         (_, err) => {
           reject(err);
@@ -112,8 +135,22 @@ export function updateDocument(id: number, item: Partial<DocumentItem>): Promise
     const now = Date.now();
     db.transaction(tx => {
       tx.executeSql(
-        'UPDATE documents SET name=?, number=?, frontImageUri=?, backImageUri=?, type=?, synced=?, updatedAt=? WHERE id=?;',
-        [item.name, item.number, item.frontImageUri || '', item.backImageUri || '', item.type || 'Outros', item.synced ? 1 : 0, now, id],
+        'UPDATE documents SET name=?, number=?, frontImageUri=?, backImageUri=?, type=?, issueDate=?, expiryDate=?, issuingState=?, issuingCity=?, issuingAuthority=?, synced=?, updatedAt=? WHERE id=?;',
+        [
+          item.name,
+          item.number,
+          item.frontImageUri || '',
+          item.backImageUri || '',
+          item.type || 'Outros',
+          item.issueDate || '',
+          item.expiryDate || '',
+          item.issuingState || '',
+          item.issuingCity || '',
+          item.issuingAuthority || '',
+          item.synced ? 1 : 0,
+          now,
+          id,
+        ],
         () => resolve(),
         (_, err) => {
           reject(err);
