@@ -14,42 +14,54 @@ async function uploadImage(path: string, userId: string): Promise<string> {
 }
 
 export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string) {
-  if (!userId || userId === 'anonymous') return;
   try {
-    const frontPath = item.frontImageUri ? await uploadImage(item.frontImageUri, userId) : '';
-    const backPath = item.backImageUri ? await uploadImage(item.backImageUri, userId) : '';
+    const frontPath = item.frontImageUri ? await uploadImage(item.frontImageUri, userId) : null;
+    const backPath = item.backImageUri ? await uploadImage(item.backImageUri, userId) : null;
 
-    const res = await fetch(`${API_BASE}/.netlify/functions/sync-document`, {
+    // Use a globally unique ID for remote sync to avoid collisions across devices
+    const idForSync = (item as any).appId || String(item.id);
+
+    const resp = await fetch('/.netlify/functions/sync-document', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id: item.id,
+        id: idForSync,
+        userId,
         name: item.name,
         number: item.number,
         frontPath,
         backPath,
-        userId,
+        type: (item as any).type,
+        issueDate: (item as any).issueDate,
+        expiryDate: (item as any).expiryDate,
+        issuingState: (item as any).issuingState,
+        issuingCity: (item as any).issuingCity,
+        issuingAuthority: (item as any).issuingAuthority,
+        electorZone: (item as any).electorZone,
+        electorSection: (item as any).electorSection,
+        updatedAt: (item as any).updatedAt || Date.now(),
       }),
     });
-    if (!res.ok) throw new Error('Failed to sync');
-  } catch (e: any) {
-    if (e?.message?.includes('Bucket not found')) {
-      console.warn(`Storage bucket '${STORAGE_BUCKET}' não existe no projeto Supabase atual. Crie o bucket ou atualize EXPO_PUBLIC_SUPABASE_BUCKET.`);
+    if (!resp.ok) {
+      console.error('syncDocumentAddOrUpdate failed', await resp.text());
     }
-    console.warn('Sync failed, will retry later', e);
+  } catch (e) {
+    console.error('syncDocumentAddOrUpdate error', e);
   }
 }
 
-export async function syncDocumentDelete(id: number, userId: string) {
-  if (!userId || userId === 'anonymous') return;
+export async function syncDocumentDelete(appIdOrLocalId: string | number, userId: string) {
   try {
-    const res = await fetch(`${API_BASE}/.netlify/functions/sync-document`, {
+    const id = typeof appIdOrLocalId === 'string' ? appIdOrLocalId : String(appIdOrLocalId);
+    const resp = await fetch('/.netlify/functions/sync-document', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, userId }),
     });
-    if (!res.ok) throw new Error('Failed to delete sync');
+    if (!resp.ok) {
+      console.error('syncDocumentDelete failed', await resp.text());
+    }
   } catch (e) {
-    console.warn('Delete sync failed, will retry later', e);
+    console.error('syncDocumentDelete error', e);
   }
 }

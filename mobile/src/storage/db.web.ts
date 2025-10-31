@@ -22,12 +22,14 @@ export async function saveImageToLocal(srcUri: string): Promise<string> {
   return srcUri;
 }
 
-export function addDocument(item: DocumentItem): Promise<number> {
+export async function addDocument(item: DocumentItem): Promise<number> {
   const now = Date.now();
   const id = memId++;
+  const appId = item.appId || `${now}-${Math.random().toString(36).slice(2, 10)}`;
   const normalized: DocumentItem = {
     ...item,
     id,
+    appId,
     type: item.type || 'Outros',
     issueDate: item.issueDate || '',
     expiryDate: item.expiryDate || '',
@@ -36,16 +38,18 @@ export function addDocument(item: DocumentItem): Promise<number> {
     issuingAuthority: item.issuingAuthority || '',
     electorZone: item.electorZone || '',
     electorSection: item.electorSection || '',
+    synced: 0,
     updatedAt: now,
   };
-  memory.push(normalized);
-  return Promise.resolve(id);
+  memory.unshift(normalized);
+  return id;
 }
 
-export function updateDocument(id: number, item: Partial<DocumentItem>): Promise<void> {
-  const idx = memory.findIndex(m => m.id === id);
+export function updateDocument(item: DocumentItem): Promise<void> {
+  const now = Date.now();
+  const idx = memory.findIndex(d => (item.appId ? d.appId === item.appId : d.id === item.id));
   if (idx >= 0) {
-    memory[idx] = { ...memory[idx], ...item, updatedAt: Date.now() } as DocumentItem;
+    memory[idx] = { ...memory[idx], ...item, updatedAt: now, appId: memory[idx].appId || item.appId } as DocumentItem;
   }
   return Promise.resolve();
 }

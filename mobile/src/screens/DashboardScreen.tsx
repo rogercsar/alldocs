@@ -1,12 +1,13 @@
-import React, { useEffect, useState, useCallback, useLayoutEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated, Modal } from 'react-native';
+import React, { useEffect, useState, useCallback, useLayoutEffect, useRef, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated, Modal, TextInput, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getDocuments, initDb, countDocuments, deleteDocument } from '../storage/db';
+import { getDocuments, initDb, countDocuments, deleteDocument, updateDocument } from '../storage/db';
 import { syncDocumentDelete } from '../storage/sync';
 import type { DocumentItem } from '../types';
 import { supabase } from '../supabase';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
+import ShareSheet from '../components/ShareSheet';
 
 const primaryColor = colors.brandPrimary;
 const bgColor = colors.bg;
@@ -44,8 +45,24 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const [menuFor, setMenuFor] = useState<number | null>(null);
   const [logoError, setLogoError] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [shareDoc, setShareDoc] = useState<DocumentItem | null>(null);
   const menuScale = useRef(new Animated.Value(0.95)).current;
   const menuOpacity = useRef(new Animated.Value(0)).current;
+
+  // Busca e filtros
+  const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [syncedOnly, setSyncedOnly] = useState(false);
+
+  const filteredDocs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return docs.filter((d) => {
+      const matchesQuery = !q || (d.name?.toLowerCase().includes(q) || d.number?.toLowerCase().includes(q));
+      const matchesType = !typeFilter || (d.type === typeFilter);
+      const matchesSync = !syncedOnly || (d.synced === 1);
+      return matchesQuery && matchesType && matchesSync;
+    });
+  }, [docs, query, typeFilter, syncedOnly]);
 
   const load = useCallback(async () => {
     setMenuFor(null);
@@ -89,39 +106,43 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
                 } catch {}
               }
               return {
-                id: d.app_id,
+                appId: d.app_id,
                 name: d.name,
                 number: d.number,
                 frontImageUri: front,
                 backImageUri: back,
+                type: d.type || undefined,
+                issueDate: d.issue_date || undefined,
+                expiryDate: d.expiry_date || undefined,
+                issuingState: d.issuing_state || undefined,
+                issuingCity: d.issuing_city || undefined,
+                issuingAuthority: d.issuing_authority || undefined,
+                electorZone: d.elector_zone || undefined,
+                electorSection: d.elector_section || undefined,
                 synced: 1,
                 updatedAt: d.updated_at ? new Date(d.updated_at).getTime() : undefined,
               } as DocumentItem;
             })
           );
-          // Mescla documentos locais e remotos para evitar "sumir" itens locais
-          const byId = new Map<string, DocumentItem>();
-          items.forEach((loc) => {
-            const k = String(loc.id ?? `${loc.name}-${loc.number}-${loc.updatedAt ?? ''}`);
-            byId.set(k, loc);
-          });
-          mapped.forEach((rem) => {
-            const k = String(rem.id ?? `${rem.name}-${rem.number}-${rem.updatedAt ?? ''}`);
-            const prev = byId.get(k);
-            if (prev) {
-              byId.set(k, {
-                ...prev,
-                ...rem,
-                frontImageUri: rem.frontImageUri || prev.frontImageUri,
-                backImageUri: rem.backImageUri || prev.backImageUri,
-                synced: typeof rem.synced === 'number' ? rem.synced : prev.synced,
-                updatedAt: rem.updatedAt ?? prev.updatedAt,
-              });
-            } else {
-              byId.set(k, rem);
-            }
-          });
-          const merged = Array.from(byId.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          const byKey = new Map<string, DocumentItem>();
+          for (const loc of items) {
+            const k = String(loc.appId || loc.id || `${loc.name}-${loc.number}`);
+            byKey.set(k, loc);
+          }
+          for (const rem of mapped) {
+            // prefer remote image URLs if present, merge by appId
+            const k = String(rem.appId || `${rem.name}-${rem.number}`);
+            const prev = byKey.get(k);
+            const mergedItem: DocumentItem = {
+              ...(prev || {}),
+              ...(rem || {}),
+              frontImageUri: rem.frontImageUri || prev?.frontImageUri,
+              backImageUri: rem.backImageUri || prev?.backImageUri,
+              updatedAt: rem.updatedAt ?? prev?.updatedAt,
+            };
+            byKey.set(k, mergedItem);
+          }
+          const merged = Array.from(byKey.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
           setDocs(merged);
           setLimitReached(!isPremium && merged.length >= 4);
           return;
@@ -184,14 +205,8 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   };
 
   const onShare = async (doc: DocumentItem) => {
-    const type = doc.type || 'Documento';
-    const title = `${doc.name} (${type})`;
-    const message = `${title}\nNúmero: ${doc.number || '—'}`;
-    try {
-      await Share.share({ title, message });
-    } catch (e: any) {
-      Alert.alert('Não foi possível compartilhar', e?.message || String(e));
-    }
+    // Abrir folha de compartilhamento com links seguros quando possível
+    setShareDoc(doc);
   };
 
   const onDelete = async (doc: DocumentItem) => {
@@ -201,7 +216,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
         try {
           if (doc.id) {
             await deleteDocument(doc.id);
-            try { await syncDocumentDelete(doc.id, userId); } catch {}
+            try { await syncDocumentDelete(doc.appId || String(doc.id), userId); } catch {}
             await load();
           }
         } catch (e) {
@@ -209,6 +224,15 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
         }
       } },
     ]);
+  };
+
+  const onToggleFavorite = async (doc: DocumentItem) => {
+    try {
+      await updateDocument({ ...doc, favorite: doc.favorite ? 0 : 1, synced: 0 });
+      await load();
+    } catch (e) {
+      Alert.alert('Erro ao atualizar favorito', String(e));
+    }
   };
 
   const renderItem = ({ item }: { item: DocumentItem }) => {
@@ -224,6 +248,9 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
             <Text style={{ fontSize:16, fontWeight:'700', color:'#111827' }}>{item.name}</Text>
             <Text style={{ fontSize:12, color:'#6B7280', marginTop:4 }}>{item.type || 'Documento'}</Text>
           </View>
+          <TouchableOpacity onPress={() => onToggleFavorite(item)} style={{ marginRight:8 }}>
+            <Ionicons name={item.favorite ? 'star' : 'star-outline'} size={20} color={item.favorite ? '#F59E0B' : '#9CA3AF'} />
+          </TouchableOpacity>
           {hasId && (
             <TouchableOpacity onPress={() => setMenuFor(item.id!)}>
               <Ionicons name='ellipsis-vertical' size={20} color={'#9CA3AF'} />
@@ -252,7 +279,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
           )}
       </TouchableOpacity>
     );
-  };
+  }; // end renderItem
 
   useEffect(() => {
     let cancelled = false;
@@ -338,7 +365,35 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   }, [navigation, logoError, notifMessages.length]);
 
   return (
+    <>
     <View style={{ flex:1, backgroundColor: bgColor }}>
+
+      {/* Busca e filtros */}
+      <View style={{ paddingHorizontal:16, paddingTop:8 }}>
+        <View style={{ flexDirection:'row', alignItems:'center' }}>
+          <Ionicons name='search' size={18} color={'#6B7280'} style={{ position:'absolute', left: 22, zIndex:1 }} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder='Buscar por nome ou número…'
+            placeholderTextColor={'#9CA3AF'}
+            style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingLeft:36, paddingRight:12, borderRadius:10 }}
+          />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop:8 }} contentContainerStyle={{ paddingRight:16 }}>
+          {renderChip('Todos', typeFilter === null, () => setTypeFilter(null))}
+          {renderChip('RG', typeFilter === 'RG', () => setTypeFilter(typeFilter === 'RG' ? null : 'RG'))}
+          {renderChip('CNH', typeFilter === 'CNH', () => setTypeFilter(typeFilter === 'CNH' ? null : 'CNH'))}
+          {renderChip('CPF', typeFilter === 'CPF', () => setTypeFilter(typeFilter === 'CPF' ? null : 'CPF'))}
+          {renderChip('Passaporte', typeFilter === 'Passaporte', () => setTypeFilter(typeFilter === 'Passaporte' ? null : 'Passaporte'))}
+          {renderChip('Outros', typeFilter === 'Outros', () => setTypeFilter(typeFilter === 'Outros' ? null : 'Outros'))}
+          <View style={{ width:8 }} />
+          <TouchableOpacity onPress={() => setSyncedOnly(s => !s)} style={{ flexDirection:'row', alignItems:'center', paddingVertical:8, paddingHorizontal:12, borderRadius:20, borderWidth:1, borderColor: syncedOnly ? primaryColor : '#E5E7EB', backgroundColor: syncedOnly ? '#EFF6FF' : '#fff' }}>
+            <Ionicons name={syncedOnly ? 'cloud' : 'cloud-outline'} size={16} color={syncedOnly ? primaryColor : '#6B7280'} style={{ marginRight:6 }} />
+            <Text style={{ color: syncedOnly ? primaryColor : '#374151', fontWeight:'600' }}>Sincronizados</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
 
       {notifMessages.length > 0 && (
         <TouchableOpacity onPress={() => setNotificationsOpen(true)} style={{ marginHorizontal:16, marginBottom:8, paddingVertical:8, paddingHorizontal:12, backgroundColor:'#FEF9C3', borderRadius:8, borderWidth:1, borderColor:'#FDE68A' }}>
@@ -361,7 +416,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
         </View>
       ) : (
         <FlatList
-          data={docs}
+          data={filteredDocs}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           numColumns={2}
@@ -434,5 +489,17 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
         <Text style={{ color:'#fff', fontWeight:'800', fontSize:16 }}>Novo</Text>
       </TouchableOpacity>
     </View>
+    {shareDoc && (
+      <ShareSheet visible={true} onClose={() => setShareDoc(null)} document={shareDoc} userId={userId} />
+    )}
+  </>
+  );
+}
+
+function renderChip(label: string, active: boolean, onPress: () => void) {
+  return (
+    <TouchableOpacity onPress={onPress} style={{ flexDirection:'row', alignItems:'center', paddingVertical:8, paddingHorizontal:12, borderRadius:20, borderWidth:1, borderColor: active ? primaryColor : '#E5E7EB', backgroundColor: active ? '#EFF6FF' : '#fff', marginRight:8 }}>
+      <Text style={{ color: active ? primaryColor : '#374151', fontWeight:'600' }}>{label}</Text>
+    </TouchableOpacity>
   );
 }

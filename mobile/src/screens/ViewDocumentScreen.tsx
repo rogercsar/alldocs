@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image, ScrollView, TouchableOpacity, Share, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { deleteDocument } from '../storage/db';
@@ -6,6 +6,7 @@ import { syncDocumentDelete } from '../storage/sync';
 import type { DocumentItem } from '../types';
 import { Platform } from 'react-native';
 import { colors } from '../theme/colors';
+import ShareSheet from '../components/ShareSheet';
 
 const primaryColor = colors.brandPrimary;
 const dangerColor = colors.danger;
@@ -52,7 +53,7 @@ function formatNumberByType(type: DocType, value?: string) {
   return value;
 }
 
-export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId }: { document: DocumentItem; onEdit: () => void; onDeleted: () => void; userId: string }) {
+export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId }: { document: DocumentItem; onDeleted: () => void; onEdit?: () => void; userId: string; }) {
   if (!document) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: bgColor }}>
@@ -79,22 +80,13 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
     onDeleted();
   }
 
+  const [shareOpen, setShareOpen] = useState(false);
   async function shareDoc() {
-    const title = `${document.name} (${type})`;
-    const message = `${title}\nNúmero: ${numberDisplay || '—'}`;
-    try {
-      if (typeof navigator !== 'undefined' && 'share' in navigator) {
-        // @ts-ignore
-        await navigator.share({ title, text: message });
-      } else {
-        await Share.share({ message, title });
-      }
-    } catch (e) {
-      Alert.alert('Não foi possível compartilhar', String((e as any)?.message || e));
-    }
+    setShareOpen(true);
   }
 
   return (
+    <>
     <ScrollView style={{ flex: 1, backgroundColor: bgColor }} contentContainerStyle={{ padding: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
@@ -234,6 +226,8 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
         </>
       )}
     </ScrollView>
+    <ShareSheet visible={shareOpen} onClose={() => setShareOpen(false)} document={document} userId={userId} />
+    </>
   );
 }
 

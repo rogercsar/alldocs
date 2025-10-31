@@ -18,6 +18,7 @@ export function initDb() {
     tx.executeSql(
       `CREATE TABLE IF NOT EXISTS documents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        appId TEXT,
         name TEXT NOT NULL,
         number TEXT NOT NULL,
         frontImageUri TEXT,
@@ -30,11 +31,13 @@ export function initDb() {
         issuingAuthority TEXT,
         electorZone TEXT,
         electorSection TEXT,
+        favorite INTEGER DEFAULT 0,
         synced INTEGER DEFAULT 0,
         updatedAt INTEGER
       );`
     );
     // tenta adicionar colunas em bases existentes
+    tx.executeSql('ALTER TABLE documents ADD COLUMN appId TEXT;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN type TEXT;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN issueDate TEXT;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN expiryDate TEXT;', [], () => {}, () => false);
@@ -43,6 +46,9 @@ export function initDb() {
     tx.executeSql('ALTER TABLE documents ADD COLUMN issuingAuthority TEXT;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN electorZone TEXT;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN electorSection TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN favorite INTEGER DEFAULT 0;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN synced INTEGER DEFAULT 0;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN updatedAt INTEGER;', [], () => {}, () => false);
   });
 }
 
@@ -54,9 +60,15 @@ export function getDocuments(): Promise<DocumentItem[]> {
   return new Promise((resolve, reject) => {
     db.transaction(tx => {
       tx.executeSql(
-        'SELECT * FROM documents ORDER BY updatedAt DESC;',
+        'SELECT id, appId, name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, favorite, synced, updatedAt FROM documents ORDER BY updatedAt DESC;',
         [],
-        (_, { rows }) => resolve(rows._array as DocumentItem[]),
+        (_, { rows }) => {
+          const items: DocumentItem[] = [];
+          for (let i = 0; i < rows.length; i++) {
+            items.push(rows.item(i) as DocumentItem);
+          }
+          resolve(items);
+        },
         (_, err) => {
           reject(err);
           return false;
@@ -100,10 +112,12 @@ export function addDocument(item: DocumentItem): Promise<number> {
   }
   return new Promise((resolve, reject) => {
     const now = Date.now();
+    const appId = item.appId || `${now}-${Math.random().toString(36).slice(2, 10)}`;
     db.transaction(tx => {
       tx.executeSql(
-        'INSERT INTO documents (name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
+        'INSERT INTO documents (appId, name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, favorite, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
         [
+          appId,
           item.name,
           item.number,
           item.frontImageUri || '',
@@ -116,6 +130,7 @@ export function addDocument(item: DocumentItem): Promise<number> {
           item.issuingAuthority || '',
           item.electorZone || '',
           item.electorSection || '',
+          item.favorite ? 1 : 0,
           item.synced ? 1 : 0,
           now,
         ],
@@ -129,35 +144,36 @@ export function addDocument(item: DocumentItem): Promise<number> {
   });
 }
 
-export function updateDocument(id: number, item: Partial<DocumentItem>): Promise<void> {
+export function updateDocument(item: DocumentItem): Promise<void> {
   if (Platform.OS === 'web') {
-    const idx = memory.findIndex(m => m.id === id);
+    const idx = memory.findIndex(m => m.id === item.id);
     if (idx >= 0) {
       memory[idx] = { ...memory[idx], ...item, updatedAt: Date.now() } as DocumentItem;
     }
     return Promise.resolve();
   }
   return new Promise((resolve, reject) => {
-    const now = Date.now();
     db.transaction(tx => {
       tx.executeSql(
-        'UPDATE documents SET name=?, number=?, frontImageUri=?, backImageUri=?, type=?, issueDate=?, expiryDate=?, issuingState=?, issuingCity=?, issuingAuthority=?, electorZone=?, electorSection=?, synced=?, updatedAt=? WHERE id=?;',
+        'UPDATE documents SET appId = COALESCE(appId, ?), name=?, number=?, frontImageUri=?, backImageUri=?, type=?, issueDate=?, expiryDate=?, issuingState=?, issuingCity=?, issuingAuthority=?, electorZone=?, electorSection=?, favorite=?, synced=?, updatedAt=? WHERE id=?;',
         [
+          item.appId || null,
           item.name,
           item.number,
-          item.frontImageUri || '',
-          item.backImageUri || '',
-          item.type || 'Outros',
-          item.issueDate || '',
-          item.expiryDate || '',
-          item.issuingState || '',
-          item.issuingCity || '',
-          item.issuingAuthority || '',
-          item.electorZone || '',
-          item.electorSection || '',
-          item.synced ? 1 : 0,
-          now,
-          id,
+          item.frontImageUri || null,
+          item.backImageUri || null,
+          item.type || null,
+          item.issueDate || null,
+          item.expiryDate || null,
+          item.issuingState || null,
+          item.issuingCity || null,
+          item.issuingAuthority || null,
+          item.electorZone || null,
+          item.electorSection || null,
+          item.favorite ? 1 : 0,
+          0,
+          Date.now(),
+          item.id,
         ],
         () => resolve(),
         (_, err) => {

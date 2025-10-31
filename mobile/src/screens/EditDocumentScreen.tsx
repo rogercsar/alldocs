@@ -151,10 +151,11 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     if (document?.id) {
       const f = frontUri ? await saveImageToLocal(frontUri) : (document.frontImageUri || '');
       const b = backUri ? await saveImageToLocal(backUri) : (document.backImageUri || '');
-      await updateDocument(document.id, { name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
+      await updateDocument({ id: document.id, appId: document.appId, name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
       setSaving(false);
+      // Sync remoto com appId global
       try {
-        await syncDocumentAddOrUpdate({ id: document.id, name, number, frontImageUri: f, backImageUri: b }, userId);
+        await syncDocumentAddOrUpdate({ id: document.id, appId: document.appId, name, number, frontImageUri: f, backImageUri: b }, userId);
       } catch {}
       onSaved();
       return;
@@ -164,8 +165,9 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     const b = backUri ? await saveImageToLocal(backUri) : '';
     const id = await addDocument({ name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
     setSaving(false);
+    // Sync remoto com appId global
     try {
-      await syncDocumentAddOrUpdate({ id, name, number, frontImageUri: f, backImageUri: b }, userId);
+      await syncDocumentAddOrUpdate({ id, appId: document?.appId, name, number, frontImageUri: f, backImageUri: b }, userId);
     } catch {}
     onSaved();
   }
