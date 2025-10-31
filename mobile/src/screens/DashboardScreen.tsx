@@ -99,8 +99,31 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
               } as DocumentItem;
             })
           );
-          setDocs(mapped);
-          setLimitReached(!isPremium && mapped.length >= 4);
+          // Mescla documentos locais e remotos para evitar "sumir" itens locais
+          const byId = new Map<string, DocumentItem>();
+          items.forEach((loc) => {
+            const k = String(loc.id ?? `${loc.name}-${loc.number}-${loc.updatedAt ?? ''}`);
+            byId.set(k, loc);
+          });
+          mapped.forEach((rem) => {
+            const k = String(rem.id ?? `${rem.name}-${rem.number}-${rem.updatedAt ?? ''}`);
+            const prev = byId.get(k);
+            if (prev) {
+              byId.set(k, {
+                ...prev,
+                ...rem,
+                frontImageUri: rem.frontImageUri || prev.frontImageUri,
+                backImageUri: rem.backImageUri || prev.backImageUri,
+                synced: typeof rem.synced === 'number' ? rem.synced : prev.synced,
+                updatedAt: rem.updatedAt ?? prev.updatedAt,
+              });
+            } else {
+              byId.set(k, rem);
+            }
+          });
+          const merged = Array.from(byId.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          setDocs(merged);
+          setLimitReached(!isPremium && merged.length >= 4);
           return;
         }
       }
