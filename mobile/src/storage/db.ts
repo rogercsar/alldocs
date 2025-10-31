@@ -28,6 +28,8 @@ export function initDb() {
         issuingState TEXT,
         issuingCity TEXT,
         issuingAuthority TEXT,
+        electorZone TEXT,
+        electorSection TEXT,
         synced INTEGER DEFAULT 0,
         updatedAt INTEGER
       );`
@@ -39,6 +41,8 @@ export function initDb() {
     tx.executeSql('ALTER TABLE documents ADD COLUMN issuingState TEXT;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN issuingCity TEXT;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN issuingAuthority TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN electorZone TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN electorSection TEXT;', [], () => {}, () => false);
   });
 }
 
@@ -98,7 +102,7 @@ export function addDocument(item: DocumentItem): Promise<number> {
     const now = Date.now();
     db.transaction(tx => {
       tx.executeSql(
-        'INSERT INTO documents (name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
+        'INSERT INTO documents (name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
         [
           item.name,
           item.number,
@@ -110,6 +114,8 @@ export function addDocument(item: DocumentItem): Promise<number> {
           item.issuingState || '',
           item.issuingCity || '',
           item.issuingAuthority || '',
+          item.electorZone || '',
+          item.electorSection || '',
           item.synced ? 1 : 0,
           now,
         ],
@@ -135,7 +141,7 @@ export function updateDocument(id: number, item: Partial<DocumentItem>): Promise
     const now = Date.now();
     db.transaction(tx => {
       tx.executeSql(
-        'UPDATE documents SET name=?, number=?, frontImageUri=?, backImageUri=?, type=?, issueDate=?, expiryDate=?, issuingState=?, issuingCity=?, issuingAuthority=?, synced=?, updatedAt=? WHERE id=?;',
+        'UPDATE documents SET name=?, number=?, frontImageUri=?, backImageUri=?, type=?, issueDate=?, expiryDate=?, issuingState=?, issuingCity=?, issuingAuthority=?, electorZone=?, electorSection=?, synced=?, updatedAt=? WHERE id=?;',
         [
           item.name,
           item.number,
@@ -147,6 +153,8 @@ export function updateDocument(id: number, item: Partial<DocumentItem>): Promise
           item.issuingState || '',
           item.issuingCity || '',
           item.issuingAuthority || '',
+          item.electorZone || '',
+          item.electorSection || '',
           item.synced ? 1 : 0,
           now,
           id,

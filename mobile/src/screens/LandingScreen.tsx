@@ -64,7 +64,7 @@ export default function LandingScreen({ onLogin, onViewPlans }: Props) {
           <Image source={require('../../assets/icon.png')} style={{ width: logoSize, height: logoSize, borderRadius: 26, marginBottom: 10 }} />
           <Text style={{ fontSize: isXwide ? 34 : isWide ? 30 : 28, fontWeight:'800', color: titulo }}>EVDocs</Text>
           <Text style={{ color: mutedText, marginTop:6, textAlign:'center', maxWidth:560 }}>
-            Armazene, organize e acesse seus documentos com segurança em qualquer dispositivo.
+            Armazene e acesse seus documentos com segurança. Pagamento único, sem mensalidade.
           </Text>
 
           {/* Hero sample image 
@@ -96,7 +96,8 @@ export default function LandingScreen({ onLogin, onViewPlans }: Props) {
           <Feature icon='phone-portrait' title='Modo offline' desc='Acesse documentos já baixados mesmo sem internet.' />
           <Feature icon='share-social' title='Compartilhamento protegido' desc='Compartilhe apenas quando quiser, com controle e segurança.' />
           <Feature icon='camera' title='Captura rápida' desc='Digitalize com a câmera e organize em poucos toques.' />
-          <Feature icon='albums' title='Suporte a vários tipos' desc='RG, CNH, CPF, cartões, certidões, veículos e outros.' />
+          <Feature icon='alert-circle' title='Alertas de vencimento' desc='Receba avisos antes de seus documentos vencerem.' />
+          <Feature icon='albums' title='Suporte a vários tipos' desc='Inclui RG, CNH, CPF, Título de Eleitor, cartões, certidões e veículos.' />
         </View>
 
         {/* Info section */}
@@ -106,7 +107,7 @@ export default function LandingScreen({ onLogin, onViewPlans }: Props) {
             Cadastre-se, adicione seus documentos com fotos da frente e verso, e mantenha tudo organizado por tipo. Sincronize com a nuvem para ter seus arquivos em todos os dispositivos.
           </Text>
           <Text style={{ color: mutedText }}>
-            No plano gratuito você pode gerenciar até 4 documentos. Desbloqueie o Premium para armazenar ilimitado e obter recursos avançados.
+            No plano gratuito você gerencia até 4 documentos. Desbloqueie o Premium com pagamento único para armazenar ilimitado e obter recursos como alertas de vencimento.
           </Text>
         </View>
 

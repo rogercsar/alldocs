@@ -44,21 +44,22 @@ export default function PlansScreen({ navigation }: any) {
             <Text style={{ color:'#0B1020', fontWeight:'800' }}>Mais popular</Text>
           </View>
           <Text style={{ fontSize: 16, fontWeight: '800', color: text }}>Premium</Text>
-          <Text style={{ color: mutedText, marginBottom: 8 }}>R$ 14,90/mês</Text>
+          <Text style={{ color: mutedText, marginBottom: 8 }}>Pagamento único (sem mensalidade)</Text>
           <Feature label='Documentos ilimitados' />
+          <Feature label='Alertas de vencimento' />
           <Feature label='Sincronização avançada' />
-          <Feature label='Acesso prioritário a novidades' />
+          <Feature label='Acesso vitalício' />
           <Feature label='Suporte prioritário' />
           <View style={{ height: 10 }} />
           <TouchableOpacity onPress={() => navigation.navigate('Signup', { redirectToUpgrade: true })} style={{ backgroundColor: primary, borderRadius: 10, paddingVertical: 12, alignItems:'center' }}>
-            <Text style={{ color: '#fff', fontWeight:'800' }}>Assinar Premium</Text>
+            <Text style={{ color: '#fff', fontWeight:'800' }}>Comprar Premium</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Observação */}
       <View style={{ alignItems:'center', marginTop: 12 }}>
-        <Text style={{ color: mutedText, textAlign:'center', maxWidth: 720 }}>Os valores e funcionalidades estão sujeitas a alterações. Você pode cancelar quando quiser diretamente no app.</Text>
+        <Text style={{ color: mutedText, textAlign:'center', maxWidth: 720 }}>Funcionalidades e valores podem mudar. Premium é pagamento único, sem mensalidade. Pagamento processado com segurança.</Text>
       </View>
     </ScrollView>
   );

@@ -11,6 +11,9 @@ export type DocumentItem = {
   issuingState?: string; // UF
   issuingCity?: string; // Cidade
   issuingAuthority?: string; // Órgão Emissor
+  // Campos Título de Eleitor
+  electorZone?: string; // Zona Eleitoral
+  electorSection?: string; // Seção Eleitoral
   synced?: number; // 0 or 1
   updatedAt?: number; // epoch millis
 };

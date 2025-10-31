@@ -34,6 +34,8 @@ export function addDocument(item: DocumentItem): Promise<number> {
     issuingState: item.issuingState || '',
     issuingCity: item.issuingCity || '',
     issuingAuthority: item.issuingAuthority || '',
+    electorZone: item.electorZone || '',
+    electorSection: item.electorSection || '',
     updatedAt: now,
   };
   memory.push(normalized);

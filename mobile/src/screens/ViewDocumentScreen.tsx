@@ -11,7 +11,7 @@ const primaryColor = colors.brandPrimary;
 const dangerColor = colors.danger;
 const bgColor = colors.bg;
 
-const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Outros'] as const;
+const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Título de Eleitor', 'Outros'] as const;
 type DocType = typeof DOC_TYPES[number];
 
 function getViewTemplate(type: DocType) {
@@ -28,6 +28,8 @@ function getViewTemplate(type: DocType) {
       return { accentColor: '#0EA5E9', icon: 'home', numberLabel: 'Identificador', frontLabel: 'Frente Comprovante', backLabel: 'Verso Comprovante', layout: 'vertical' as const, hasBack: false };
     case 'Documento do veículo':
       return { accentColor: '#22C55E', icon: 'car', numberLabel: 'Placa/RENAVAM', frontLabel: 'Frente Doc Veículo', backLabel: 'Verso Doc Veículo', layout: 'sideBySide' as const, hasBack: true };
+    case 'Título de Eleitor':
+      return { accentColor: '#2563EB', icon: 'card', numberLabel: 'Número do Título de Eleitor', frontLabel: 'Frente Título', backLabel: 'Verso Título', layout: 'sideBySide' as const, hasBack: true };
     case 'Cartões':
       return { accentColor: '#EF4444', icon: 'wallet', numberLabel: 'Número do Cartão', frontLabel: 'Frente Cartão', backLabel: 'Verso Cartão', layout: 'sideBySide' as const, hasBack: true };
     case 'Certidões':
@@ -97,9 +99,6 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
           <Text numberOfLines={1} ellipsizeMode='tail' style={{ fontSize: 22, fontWeight: '800', color: '#111827', marginRight: 8, flexShrink: 1 }}>{document.name}</Text>
-          <View style={{ borderWidth: 1, borderColor: template.accentColor, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 9999, flexDirection: 'row', alignItems: 'center' }}>
-      
-          </View>
         </View>
         {Platform.OS === 'web' ? (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -143,6 +142,14 @@ export default function ViewDocumentScreen({ document, onEdit, onDeleted, userId
       <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, marginBottom: 16 }}>
         <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.numberLabel}</Text>
         <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>{numberDisplay}</Text>
+        {type === 'Título de Eleitor' && (document.electorZone || document.electorSection) ? (
+          <View style={{ marginTop: 8 }}>
+            <Text style={{ fontSize: 13, color:'#6B7280' }}>Zona • Seção</Text>
+            <Text style={{ fontSize: 16, fontWeight:'700', color:'#111827' }}>
+              {document.electorZone || '—'} • {document.electorSection || '—'}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {(type === 'RG' || type === 'CNH') && (

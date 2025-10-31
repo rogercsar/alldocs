@@ -11,7 +11,7 @@ import DateTimePicker from '@react-native-community/datetimepicker'
 
 const primaryColor = colors.brandPrimary;
 const bgColor = colors.bg;
-const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Outros'] as const;
+const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Título de Eleitor', 'Outros'] as const;
 
 
 
@@ -29,6 +29,8 @@ function getTemplate(type: typeof DOC_TYPES[number]) {
       return { numberLabel: 'Identificador', frontLabel: 'Foto (Frente Comprovante)', backLabel: '', imagesLayout: 'stack', hasBack: false, numberPlaceholder: 'Ex.: Conta nº / Código cliente' };
     case 'Documento do veículo':
       return { numberLabel: 'Placa/RENAVAM', frontLabel: 'Foto (Frente Doc Veículo)', backLabel: 'Foto (Verso Doc Veículo)', imagesLayout: 'sideBySide', hasBack: true, numberPlaceholder: 'Ex.: ABC1D23 ou 123456789' };
+    case 'Título de Eleitor':
+      return { numberLabel: 'Número do Título de Eleitor', frontLabel: 'Foto (Frente Título)', backLabel: 'Foto (Verso Título)', imagesLayout: 'sideBySide', hasBack: true, numberPlaceholder: 'Ex.: 0000 0000 0000' };
     case 'Cartões':
       return { numberLabel: 'Número do Cartão', frontLabel: 'Foto (Frente Cartão)', backLabel: 'Foto (Verso Cartão)', imagesLayout: 'sideBySide', hasBack: true, numberPlaceholder: 'Ex.: 1234 5678 9012 3456' };
     case 'Certidões':
@@ -51,6 +53,9 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
   const [issuingState, setIssuingState] = useState(document?.issuingState || '');
   const [issuingCity, setIssuingCity] = useState(document?.issuingCity || '');
   const [issuingAuthority, setIssuingAuthority] = useState(document?.issuingAuthority || '');
+  // Campos Título de Eleitor
+  const [electorZone, setElectorZone] = useState(document?.electorZone || '');
+  const [electorSection, setElectorSection] = useState(document?.electorSection || '');
   // Opções dinâmicas
   const [cityOptions, setCityOptions] = useState<Option[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
@@ -67,6 +72,8 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     setIssuingState(document?.issuingState || '');
     setIssuingCity(document?.issuingCity || '');
     setIssuingAuthority(document?.issuingAuthority || '');
+    setElectorZone(document?.electorZone || '');
+    setElectorSection(document?.electorSection || '');
   }, [document?.id]);
 
   // Carregar cidades ao mudar UF
@@ -133,9 +140,13 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     if (!name || !number) { Alert.alert('Campos obrigatórios', 'Informe nome e número'); return; }
     setSaving(true);
 
-    const meta = shouldShowMetadata(docType)
+    const baseMeta = shouldShowMetadata(docType)
       ? { issueDate: issueDate || '', expiryDate: expiryDate || '', issuingState: issuingState || '', issuingCity: issuingCity || '', issuingAuthority: issuingAuthority || '' }
       : { issueDate: '', expiryDate: '', issuingState: '', issuingCity: '', issuingAuthority: '' };
+
+    const meta = docType === 'Título de Eleitor'
+      ? { ...baseMeta, electorZone: electorZone || '', electorSection: electorSection || '' }
+      : { ...baseMeta, electorZone: '', electorSection: '' };
 
     if (document?.id) {
       const f = frontUri ? await saveImageToLocal(frontUri) : (document.frontImageUri || '');
@@ -182,6 +193,22 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
 
           <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.numberLabel}</Text>
           <TextInput value={number} onChangeText={setNumber} placeholder={template.numberPlaceholder} placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:16 }} />
+
+          {docType === 'Título de Eleitor' && (
+            <View style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', padding:12, borderRadius:12, marginBottom:16 }}>
+              <Text style={{ fontSize: 14, color:'#374151', marginBottom: 8, fontWeight:'700' }}>Informações do Título de Eleitor</Text>
+              <View style={{ flexDirection:'row', gap:8 }}>
+                <View style={{ flex:1 }}>
+                  <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 6 }}>Zona</Text>
+                  <TextInput value={electorZone} onChangeText={setElectorZone} keyboardType='numeric' placeholder='Ex.: 001' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10 }} />
+                </View>
+                <View style={{ flex:1 }}>
+                  <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 6 }}>Seção</Text>
+                  <TextInput value={electorSection} onChangeText={setElectorSection} keyboardType='numeric' placeholder='Ex.: 0123' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10 }} />
+                </View>
+              </View>
+            </View>
+          )}
 
           {shouldShowMetadata(docType) && (
             <View style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', padding:12, borderRadius:12, marginBottom:16 }}>

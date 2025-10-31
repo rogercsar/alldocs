@@ -255,6 +255,30 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   if (deviceLimitReached) notifMessages.push(`Limite de dispositivos atingido (${deviceCount}/${deviceLimit}). Faça upgrade para adicionar mais.`);
   if (limitReached) notifMessages.push('Limite gratuito de 4 documentos atingido. Desbloqueie Premium.');
 
+  // Alertas de vencimento de documentos
+  const parseDateToMillis = (d?: string) => {
+    if (!d) return null;
+    const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return null;
+    const dd = parseInt(m[1], 10);
+    const mm = parseInt(m[2], 10) - 1;
+    const yyyy = parseInt(m[3], 10);
+    const t = new Date(yyyy, mm, dd).getTime();
+    return Number.isFinite(t) ? t : null;
+  };
+  const now = Date.now();
+  const thresholdMs = 30 * 24 * 60 * 60 * 1000; // 30 dias
+  docs.forEach((doc) => {
+    const exp = parseDateToMillis(doc.expiryDate);
+    if (!exp) return;
+    if (exp < now) {
+      notifMessages.push(`Documento '${doc.name}' está vencido desde ${doc.expiryDate}.`);
+    } else if (exp - now <= thresholdMs) {
+      const days = Math.max(1, Math.ceil((exp - now) / (24 * 60 * 60 * 1000)));
+      notifMessages.push(`Documento '${doc.name}' vence em ${days} dia${days > 1 ? 's' : ''} (${doc.expiryDate}).`);
+    }
+  });
+
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useLayoutEffect(() => {
