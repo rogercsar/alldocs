@@ -66,7 +66,7 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
     });
     if (!resp.ok) {
       const txt = await resp.text().catch(() => '');
-      console.error('syncDocumentAddOrUpdate failed', resp.status, txt);
+      console.error('[sync] upsert failed', resp.status, txt);
     } else {
       console.log('[sync] OK', resp.status);
     }
@@ -89,7 +89,8 @@ export async function syncDocumentDelete(appIdOrLocalId: string | number, userId
       body: JSON.stringify({ id: idNum, userId }),
     });
     if (!resp.ok) {
-      console.error('syncDocumentDelete failed', await resp.text());
+      const txt = await resp.text().catch(() => '');
+      console.error('[sync] delete failed', resp.status, txt);
     }
   } catch (e) {
     console.error('syncDocumentDelete error', e);

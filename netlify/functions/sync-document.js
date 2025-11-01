@@ -13,6 +13,10 @@ exports.handler = async function(event) {
     const body = event.body ? JSON.parse(event.body) : {};
     const { id, name, number, frontPath, backPath, userId } = body;
 
+    if (!userId || typeof userId !== 'string') {
+      return json({ error: 'Missing or invalid userId' }, 400);
+    }
+
     if (event.httpMethod === 'POST') {
       const appId = typeof id === 'number' ? id : parseInt(String(id), 10);
       if (!Number.isFinite(appId)) return json({ error: 'Invalid app_id' }, 400);
@@ -51,10 +55,12 @@ exports.handler = async function(event) {
     }
 
     if (event.httpMethod === 'DELETE') {
+      const appId = typeof id === 'number' ? id : parseInt(String(id), 10);
+      if (!Number.isFinite(appId)) return json({ error: 'Invalid app_id' }, 400);
       const { data, error } = await supabase
         .from('documents')
         .delete()
-        .eq('app_id', id)
+        .eq('app_id', appId)
         .eq('user_id', userId);
       if (error) throw error;
       return json({ ok: true });
