@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useLayoutEffect, useRef, useMe
 import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated, Modal, TextInput, ScrollView, Platform } from 'react-native';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { getDocuments, initDb, countDocuments, deleteDocument, updateDocument, addDocument } from '../storage/db';
-import { syncDocumentDelete } from '../storage/sync';
+import { syncDocumentDelete, syncDocumentAddOrUpdate } from '../storage/sync';
 import type { DocumentItem } from '../types';
 import { supabase } from '../supabase';
 import { useNavigation } from '@react-navigation/native';
@@ -96,6 +96,21 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
     setMenuFor(null);
     initDb();
     const [items, cnt] = await Promise.all([getDocuments(), countDocuments()]);
+
+    // Tenta sincronizar pendentes (criados/atualizados no web sem login)
+    try {
+      if (userId && userId !== 'anonymous') {
+        const unsynced = items.filter(d => d.synced !== 1);
+        for (const doc of unsynced) {
+          try {
+            await syncDocumentAddOrUpdate({ id: doc.id, appId: doc.appId, name: doc.name, number: doc.number, frontImageUri: doc.frontImageUri, backImageUri: doc.backImageUri }, userId);
+            await updateDocument({ ...doc, synced: 1 });
+          } catch (e) {
+            console.log('[sync] deferred sync failed', e);
+          }
+        }
+      }
+    } catch {}
 
     const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
     let isPremium = false;
