@@ -14,18 +14,39 @@ exports.handler = async function(event) {
     const { id, name, number, frontPath, backPath, userId } = body;
 
     if (event.httpMethod === 'POST') {
-      const { data, error } = await supabase
+      const appId = typeof id === 'number' ? id : parseInt(String(id), 10);
+      if (!Number.isFinite(appId)) return json({ error: 'Invalid app_id' }, 400);
+
+      // Upsert manual por (app_id, user_id) para evitar sobrescrita por constraint incorreta
+      const { data: existing, error: selErr } = await supabase
         .from('documents')
-        .upsert({
-          app_id: id,
-          user_id: userId,
-          name,
-          number,
-          front_path: frontPath || null,
-          back_path: backPath || null,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'app_id,user_id' });
-      if (error) throw error;
+        .select('id')
+        .eq('app_id', appId)
+        .eq('user_id', userId)
+        .limit(1);
+      if (selErr) throw selErr;
+
+      const payload = {
+        name,
+        number,
+        front_path: frontPath || null,
+        back_path: backPath || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (Array.isArray(existing) && existing.length > 0) {
+        const rowId = existing[0].id;
+        const { error: updErr } = await supabase
+          .from('documents')
+          .update(payload)
+          .eq('id', rowId);
+        if (updErr) throw updErr;
+      } else {
+        const { error: insErr } = await supabase
+          .from('documents')
+          .insert({ app_id: appId, user_id: userId, ...payload });
+        if (insErr) throw insErr;
+      }
       return json({ ok: true });
     }
 

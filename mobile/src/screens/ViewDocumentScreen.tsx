@@ -80,7 +80,8 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
     if (!document?.id) return;
     await deleteDocument(document.id);
     try {
-      await syncDocumentDelete(document.id, userId);
+      const remoteKey = (document as any).appId ?? document.id;
+      await syncDocumentDelete(remoteKey, userId);
     } catch {}
     showToast('Documento excluído', { type: 'success' });
     onDeleted();

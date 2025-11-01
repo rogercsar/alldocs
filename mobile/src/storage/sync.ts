@@ -30,12 +30,12 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
       return;
     }
 
-    // Determina ID numérico para app_id (Supabase espera inteiro)
-    const idForSync = (typeof item.id === 'number')
-      ? item.id
+    // Determina ID numérico para app_id (prioriza appId estável; fallback id local)
+    const idForSync = (typeof (item as any).appId === 'number')
+      ? (item as any).appId
       : (typeof (item as any).appId === 'string'
           ? parseInt((item as any).appId, 10)
-          : (typeof (item as any).appId === 'number' ? (item as any).appId : NaN));
+          : (typeof item.id === 'number' ? item.id : NaN));
     if (!Number.isFinite(idForSync)) {
       console.log('[sync] skip: invalid appId/id for upsert', { appId: (item as any).appId, id: item.id });
       return;

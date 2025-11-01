@@ -173,14 +173,19 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
             byKey.set(k, loc);
           }
           for (const rem of mapped) {
-            const matchLoc = items.find(loc => (
-              String(loc.id) === String(rem.appId) &&
-              (
-                (loc.number && rem.number && loc.number === rem.number) ||
-                (loc.name && rem.name && loc.name === rem.name) ||
-                (loc.cardType && rem.cardType && loc.cardType === rem.cardType)
-              )
-            ));
+            const matchLoc = items.find(loc => {
+              const appNum = typeof (loc as any).appId === 'string' ? parseInt((loc as any).appId, 10)
+                : (typeof (loc as any).appId === 'number' ? (loc as any).appId : NaN);
+              const keyNum = Number.isFinite(appNum) ? appNum : (typeof loc.id === 'number' ? loc.id : NaN);
+              return (
+                String(keyNum) === String(rem.appId) &&
+                (
+                  (loc.number && rem.number && loc.number === rem.number) ||
+                  (loc.name && rem.name && loc.name === rem.name) ||
+                  (loc.cardType && rem.cardType && loc.cardType === rem.cardType)
+                )
+              );
+            });
             const targetKey = matchLoc ? keyForItem(matchLoc) : keyForItem(rem);
             const prev = byKey.get(targetKey);
             const mergedItem: DocumentItem = {
