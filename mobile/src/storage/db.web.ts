@@ -38,6 +38,11 @@ export async function addDocument(item: DocumentItem): Promise<number> {
     issuingAuthority: item.issuingAuthority || '',
     electorZone: item.electorZone || '',
     electorSection: item.electorSection || '',
+    // Campos de Cartões
+    cardSubtype: item.cardSubtype || '',
+    bank: item.bank || '',
+    cvc: item.cvc || '',
+    cardBrand: item.cardBrand || '',
     synced: 0,
     updatedAt: now,
   };

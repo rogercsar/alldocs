@@ -31,6 +31,10 @@ export function initDb() {
         issuingAuthority TEXT,
         electorZone TEXT,
         electorSection TEXT,
+        cardSubtype TEXT,
+        bank TEXT,
+        cvc TEXT,
+        cardBrand TEXT,
         favorite INTEGER DEFAULT 0,
         synced INTEGER DEFAULT 0,
         updatedAt INTEGER
@@ -46,6 +50,10 @@ export function initDb() {
     tx.executeSql('ALTER TABLE documents ADD COLUMN issuingAuthority TEXT;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN electorZone TEXT;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN electorSection TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN cardSubtype TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN bank TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN cvc TEXT;', [], () => {}, () => false);
+    tx.executeSql('ALTER TABLE documents ADD COLUMN cardBrand TEXT;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN favorite INTEGER DEFAULT 0;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN synced INTEGER DEFAULT 0;', [], () => {}, () => false);
     tx.executeSql('ALTER TABLE documents ADD COLUMN updatedAt INTEGER;', [], () => {}, () => false);
@@ -60,7 +68,7 @@ export function getDocuments(): Promise<DocumentItem[]> {
   return new Promise((resolve, reject) => {
     db.transaction(tx => {
       tx.executeSql(
-        'SELECT id, appId, name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, favorite, synced, updatedAt FROM documents ORDER BY updatedAt DESC;',
+        'SELECT id, appId, name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand, favorite, synced, updatedAt FROM documents ORDER BY updatedAt DESC;',
         [],
         (_, { rows }) => {
           const items: DocumentItem[] = [];
@@ -115,7 +123,7 @@ export function addDocument(item: DocumentItem): Promise<number> {
     const appId = item.appId || `${now}-${Math.random().toString(36).slice(2, 10)}`;
     db.transaction(tx => {
       tx.executeSql(
-        'INSERT INTO documents (appId, name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, favorite, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
+        'INSERT INTO documents (appId, name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand, favorite, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
         [
           appId,
           item.name,
@@ -130,6 +138,10 @@ export function addDocument(item: DocumentItem): Promise<number> {
           item.issuingAuthority || '',
           item.electorZone || '',
           item.electorSection || '',
+          item.cardSubtype || '',
+          item.bank || '',
+          item.cvc || '',
+          item.cardBrand || '',
           item.favorite ? 1 : 0,
           item.synced ? 1 : 0,
           now,
@@ -155,7 +167,7 @@ export function updateDocument(item: DocumentItem): Promise<void> {
   return new Promise((resolve, reject) => {
     db.transaction(tx => {
       tx.executeSql(
-        'UPDATE documents SET appId = COALESCE(appId, ?), name=?, number=?, frontImageUri=?, backImageUri=?, type=?, issueDate=?, expiryDate=?, issuingState=?, issuingCity=?, issuingAuthority=?, electorZone=?, electorSection=?, favorite=?, synced=?, updatedAt=? WHERE id=?;',
+        'UPDATE documents SET appId = COALESCE(appId, ?), name=?, number=?, frontImageUri=?, backImageUri=?, type=?, issueDate=?, expiryDate=?, issuingState=?, issuingCity=?, issuingAuthority=?, electorZone=?, electorSection=?, cardSubtype=?, bank=?, cvc=?, cardBrand=?, favorite=?, synced=?, updatedAt=? WHERE id=?;',
         [
           item.appId || null,
           item.name,
@@ -170,6 +182,10 @@ export function updateDocument(item: DocumentItem): Promise<void> {
           item.issuingAuthority || null,
           item.electorZone || null,
           item.electorSection || null,
+          item.cardSubtype || null,
+          item.bank || null,
+          item.cvc || null,
+          item.cardBrand || null,
           item.favorite ? 1 : 0,
           0,
           Date.now(),

@@ -10,6 +10,7 @@ import ShareSheet from '../components/ShareSheet';
 import { typography } from '../theme/typography';
 import { spacing } from '../theme/spacing';
 import { useToast } from '../components/Toast';
+import { FontAwesome } from '@expo/vector-icons';
 
 const primaryColor = colors.brandPrimary;
 const dangerColor = colors.danger;
@@ -139,6 +140,12 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
       <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, marginBottom: 16 }}>
         <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.numberLabel}</Text>
         <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>{numberDisplay}</Text>
+        {type === 'Cartões' && !!document.cardBrand && (
+          <View style={{ flexDirection:'row', alignItems:'center', marginTop:8 }}>
+            <FontAwesome name={brandIconName(document.cardBrand) as any} size={18} color={'#374151'} />
+            <Text style={{ marginLeft:8, color:'#374151' }}>Bandeira: <Text style={{ fontWeight:'700', color:'#111827' }}>{document.cardBrand}</Text></Text>
+          </View>
+        )}
         {type === 'Título de Eleitor' && (document.electorZone || document.electorSection) ? (
           <View style={{ marginTop: 8 }}>
             <Text style={{ fontSize: 13, color:'#6B7280' }}>Zona • Seção</Text>
@@ -284,4 +291,18 @@ async function exportAsPDF(title: string, frontUri?: string, backUri?: string) {
   } catch {}
 
   doc.save(`${title || 'documento'}.pdf`);
+}
+
+function brandIconName(brand?: string) {
+  switch ((brand || '').toLowerCase()) {
+    case 'visa': return 'cc-visa';
+    case 'mastercard': return 'cc-mastercard';
+    case 'american express': return 'cc-amex';
+    case 'discover': return 'cc-discover';
+    case 'diners club': return 'cc-diners-club';
+    case 'jcb': return 'cc-jcb';
+    case 'elo': return 'credit-card';
+    case 'hipercard': return 'credit-card';
+    default: return 'credit-card';
+  }
 }

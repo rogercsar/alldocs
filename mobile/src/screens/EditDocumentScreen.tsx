@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Image, Alert, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Modal, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { addDocument, updateDocument, saveImageToLocal } from '../storage/db';
 import { supabase } from '../supabase';
@@ -9,9 +9,14 @@ import type { DocumentItem } from '../types';
 import { colors } from '../theme/colors';
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { ToastProvider, useToast } from '../components/Toast';
+import { parseExpiryDate, isExpired } from '../utils/expiry';
 
 const primaryColor = colors.brandPrimary;
 const bgColor = colors.bg;
+
+const cardShadow = Platform.OS === 'web'
+  ? { boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }
+  : { shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:3 };
 const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Título de Eleitor', 'Outros'] as const;
 
 
@@ -61,6 +66,11 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
   // Opções dinâmicas
   const [cityOptions, setCityOptions] = useState<Option[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
+  // Campos Cartões
+  const [cardSubtype, setCardSubtype] = useState(document?.cardSubtype || '');
+  const [cvc, setCvc] = useState(document?.cvc || '');
+  const [bank, setBank] = useState(document?.bank || '');
+  const [cardBrand, setCardBrand] = useState(document?.cardBrand || '');
   const [authorityOptions, setAuthorityOptions] = useState<Option[]>([]);
 
   useEffect(() => {
@@ -76,6 +86,8 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     setIssuingAuthority(document?.issuingAuthority || '');
     setElectorZone(document?.electorZone || '');
     setElectorSection(document?.electorSection || '');
+    setBank(document?.bank || '');
+    setCardBrand(document?.cardBrand || '');
   }, [document?.id]);
 
   // Carregar cidades ao mudar UF
@@ -142,13 +154,25 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     if (!name || !number) { Alert.alert('Campos obrigatórios', 'Informe nome e número'); return; }
     setSaving(true);
 
+    if (docType === 'Cartões') {
+      const exp = parseExpiryDate(expiryDate);
+      if (!exp) { setSaving(false); Alert.alert('Validade inválida', 'Selecione mês e ano válidos para a validade do cartão'); return; }
+      if (isExpired(expiryDate)) { setSaving(false); Alert.alert('Cartão vencido', 'A validade informada está no passado'); return; }
+    }
+
     const baseMeta = shouldShowMetadata(docType)
       ? { issueDate: issueDate || '', expiryDate: expiryDate || '', issuingState: issuingState || '', issuingCity: issuingCity || '', issuingAuthority: issuingAuthority || '' }
-      : { issueDate: '', expiryDate: '', issuingState: '', issuingCity: '', issuingAuthority: '' };
+      : { issueDate: '', expiryDate: docType === 'Cartões' ? (expiryDate || '') : '', issuingState: '', issuingCity: '', issuingAuthority: '' };
 
-    const meta = docType === 'Título de Eleitor'
-      ? { ...baseMeta, electorZone: electorZone || '', electorSection: electorSection || '' }
-      : { ...baseMeta, electorZone: '', electorSection: '' };
+    const eleitorMeta = docType === 'Título de Eleitor'
+      ? { electorZone: electorZone || '', electorSection: electorSection || '' }
+      : { electorZone: '', electorSection: '' };
+
+    const cartaoMeta = docType === 'Cartões'
+      ? { cardSubtype: cardSubtype || '', cvc: cvc || '', bank: bank || '', cardBrand: cardBrand || '' }
+      : { cardSubtype: '', cvc: '', bank: '', cardBrand: '' };
+
+    const meta = { ...baseMeta, ...eleitorMeta, ...cartaoMeta };
 
     if (document?.id) {
       const f = frontUri ? await saveImageToLocal(frontUri) : (document.frontImageUri || '');
@@ -180,7 +204,7 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
         <Text style={{ fontSize: 22, fontWeight:'800', color:'#111827', marginBottom:12 }}>Adicionar/Editar Documento</Text>
 
         {/* Tipo de Documento */}
-        <View style={{ backgroundColor:'#fff', borderRadius:16, padding:12, borderWidth:1, borderColor:'#E5E7EB', shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:3, marginBottom:12 }}>
+        <View style={{ backgroundColor:'#fff', borderRadius:16, padding:12, borderWidth:1, borderColor:'#E5E7EB', marginBottom:12, ...cardShadow }}>
           <Text style={{ fontSize: 14, color:'#374151', marginBottom: 8 }}>Tipo de Documento</Text>
           <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
             {DOC_TYPES.map((t) => (
@@ -191,12 +215,45 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
           </View>
         </View>
 
-        <View style={{ backgroundColor:'#fff', borderRadius:16, padding:16, borderWidth:1, borderColor:'#E5E7EB', shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation:3 }}>
+        <View style={{ backgroundColor:'#fff', borderRadius:16, padding:16, borderWidth:1, borderColor:'#E5E7EB', ...cardShadow }}>
           <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>Nome do Documento</Text>
           <TextInput value={name} onChangeText={setName} placeholder={`Ex.: ${docType}`} placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:14 }} />
 
           <Text style={{ fontSize: 14, color:'#374151', marginBottom: 6 }}>{template.numberLabel}</Text>
-          <TextInput value={number} onChangeText={setNumber} placeholder={template.numberPlaceholder} placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:16 }} />
+          <TextInput value={number} onChangeText={(t) => { setNumber(t); setCardBrand(detectCardBrand(t)); }} placeholder={template.numberPlaceholder} placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:12, paddingHorizontal:14, borderRadius:12, marginBottom:16 }} />
+
+          {docType === 'Cartões' && (
+            <View style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', padding:12, borderRadius:12, marginBottom:16 }}>
+              <Text style={{ fontSize: 14, color:'#374151', marginBottom: 8, fontWeight:'700' }}>Informações do Cartão</Text>
+              {!!cardBrand && (
+                <View style={{ flexDirection:'row', alignItems:'center', marginBottom: 8 }}>
+                  <FontAwesome name={brandIconName(cardBrand) as any} size={18} color={'#374151'} />
+                  <Text style={{ marginLeft:8, color:'#374151' }}>Bandeira: <Text style={{ fontWeight:'700', color:'#111827' }}>{cardBrand}</Text></Text>
+                </View>
+              )}
+              <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>Tipo do Cartão</Text>
+              <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom: 12 }}>
+                {['Crédito','Débito','Plano de saúde','Outro'].map((t) => (
+                  <TouchableOpacity key={t} onPress={() => setCardSubtype(t)} style={{ paddingVertical:8, paddingHorizontal:12, borderRadius:9999, borderWidth:1, borderColor: cardSubtype === t ? primaryColor : '#E5E7EB', backgroundColor: cardSubtype === t ? '#EEF2FF' : '#fff' }}>
+                    <Text style={{ color: cardSubtype === t ? primaryColor : '#374151', fontWeight:'600' }}>{t}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={{ flexDirection:'row', gap:8 }}>
+                <AdaptiveMonthYearField label="Validade" value={expiryDate} onChange={setExpiryDate} />
+                <View style={{ flex:1 }}>
+                  <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>CVC</Text>
+                  <TextInput value={cvc} onChangeText={(t) => setCvc(t.replace(/\D/g,'').slice(0,4))} keyboardType='numeric' placeholder='Ex.: 123' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10 }} />
+                </View>
+              </View>
+              {(cardSubtype === 'Crédito' || cardSubtype === 'Débito') && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={{ fontSize: 13, color:'#6B7280', marginBottom: 6 }}>Banco</Text>
+                  <TextInput value={bank} onChangeText={setBank} placeholder='Ex.: Nubank' placeholderTextColor='#9CA3AF' style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingHorizontal:12, borderRadius:10 }} />
+                </View>
+              )}
+            </View>
+          )}
 
           {docType === 'Título de Eleitor' && (
             <View style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#E5E7EB', padding:12, borderRadius:12, marginBottom:16 }}>
@@ -373,6 +430,20 @@ function pad2(n: number | string) {
 function parseDateParts(str: string | undefined) {
   const m = (str || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   return m ? { dd: m[1], mm: m[2], yyyy: m[3] } : { dd: '', mm: '', yyyy: '' };
+}
+
+function detectCardBrand(num: string): string {
+  const n = (num || '').replace(/\D/g, '');
+  if (!n) return '';
+  if (/^4\d{12,18}$/.test(n)) return 'visa';
+  if (/^(5[1-5]\d{14}|2[2-7]\d{14})$/.test(n)) return 'mastercard';
+  if (/^3[47]\d{13}$/.test(n)) return 'amex';
+  if (/^6(?:011|4[4-9]\d{2}|5\d{2})\d{12}$/.test(n)) return 'discover';
+  if (/^3(?:0[0-5]\d{11}|[68]\d{12})$/.test(n)) return 'diners';
+  if (/^(?:2131|1800)\d{11}|35\d{14}$/.test(n)) return 'jcb';
+  if (/^(606282|3841|60)\d{10,}$/.test(n)) return 'hipercard';
+  if (/^(4011|431274|438935|451416|4576|504175|5067|509|6277|636368|636369)\d{0,}$/.test(n)) return 'elo';
+  return '';
 }
 
 function SelectField({ label, value, placeholder, options, onChange, disabled, loading }: { label: string; value?: string; placeholder?: string; options: Option[]; onChange: (v: string) => void; disabled?: boolean; loading?: boolean }) {
@@ -645,4 +716,126 @@ function AdaptiveDateField({ label, value, onChange }: { label: string; value: s
       )}
     </View>
   );
+}
+function AdaptiveMonthYearField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  if (Platform.OS === 'web') return <MonthYearField label={label} value={value} onChange={onChange} />;
+  const { mm, yyyy } = parseDateParts(value);
+  const monthOptions: Option[] = Array.from({ length: 12 }, (_, i) => ({ value: pad2(i + 1), label: pad2(i + 1) }));
+  const startY = new Date().getFullYear();
+  const yearOptions: Option[] = Array.from({ length: 16 }, (_, idx) => {
+    const y = String(startY + 15 - idx);
+    return { value: y, label: y };
+  });
+  function update(part: 'mm'|'yyyy', newVal: string) {
+    const parts = parseDateParts(value);
+    const next = { ...parts, [part]: newVal } as { dd: string; mm: string; yyyy: string };
+    if (next.mm && next.yyyy) {
+      const lastDay = new Date(parseInt(next.yyyy, 10), parseInt(next.mm, 10), 0).getDate();
+      onChange(`${pad2(lastDay)}/${next.mm}/${next.yyyy}`);
+    } else {
+      onChange('');
+    }
+  }
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 6 }}>{label}</Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <SelectField label="M�s" value={mm} placeholder="MM" options={monthOptions} onChange={(v) => update('mm', v)} />
+        <SelectField label="Ano" value={yyyy} placeholder="AAAA" options={yearOptions} onChange={(v) => update('yyyy', v)} />
+      </View>
+    </View>
+  );
+}
+
+function MonthYearField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const { mm, yyyy } = parseDateParts(value);
+  const [selMonth, setSelMonth] = useState<string>(mm);
+  const [selYear, setSelYear] = useState<string>(yyyy);
+
+  useEffect(() => {
+    const p = parseDateParts(value);
+    setSelMonth(p.mm); setSelYear(p.yyyy);
+  }, [value]);
+
+  const monthOptions: Option[] = Array.from({ length: 12 }, (_, i) => ({ value: pad2(i + 1), label: pad2(i + 1) }));
+  const startY = new Date().getFullYear();
+  const yearOptions: Option[] = Array.from({ length: 16 }, (_, idx) => {
+    const y = String(startY + 15 - idx);
+    return { value: y, label: y };
+  });
+
+  function confirm() {
+    if (selMonth && selYear) {
+      const lastDay = new Date(parseInt(selYear, 10), parseInt(selMonth, 10), 0).getDate();
+      onChange(`${pad2(lastDay)}/${selMonth}/${selYear}`);
+    }
+    setOpen(false);
+  }
+  function clear() { setSelMonth(''); setSelYear(''); onChange(''); setOpen(false); }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 6 }}>{label}</Text>
+      <TouchableOpacity onPress={() => setOpen(true)} style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, minHeight: 44, justifyContent: 'center' }}>
+        <Text style={{ color: (mm && yyyy) ? '#111827' : '#9CA3AF', fontWeight: (mm && yyyy) ? '700' : '400' }}>
+          {(mm && yyyy) ? `${mm}/${yyyy}` : 'Selecionar m�s/ano'}
+        </Text>
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', padding: 16 }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ backgroundColor: '#fff', borderRadius: 12, maxHeight: '80%', padding: 12 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>{label}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity onPress={clear}>
+                  <Text style={{ color: colors.brandPrimary, fontWeight: '700' }}>Limpar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={confirm} style={{ backgroundColor: colors.brandPrimary, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 }}>
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>M�s</Text>
+                <ScrollView>
+                  {monthOptions.map((o) => (
+                    <TouchableOpacity key={o.value} onPress={() => setSelMonth(o.value)} style={{ paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, backgroundColor: selMonth === o.value ? '#EEF2FF' : 'transparent' }}>
+                      <Text style={{ color: selMonth === o.value ? colors.brandPrimary : '#111827', fontWeight: selMonth === o.value ? '700' : '400' }}>{o.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>Ano</Text>
+                <ScrollView>
+                  {yearOptions.map((o) => (
+                    <TouchableOpacity key={o.value} onPress={() => setSelYear(o.value)} style={{ paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, backgroundColor: selYear === o.value ? '#EEF2FF' : 'transparent' }}>
+                      <Text style={{ color: selYear === o.value ? colors.brandPrimary : '#111827', fontWeight: selYear === o.value ? '700' : '400' }}>{o.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+}
+
+function brandIconName(brand?: string) {
+  switch ((brand || '').toLowerCase()) {
+    case 'visa': return 'cc-visa';
+    case 'mastercard': return 'cc-mastercard';
+    case 'american express': return 'cc-amex';
+    case 'discover': return 'cc-discover';
+    case 'diners club': return 'cc-diners-club';
+    case 'jcb': return 'cc-jcb';
+    case 'elo': return 'credit-card';
+    case 'hipercard': return 'credit-card';
+    default: return 'credit-card';
+  }
 }

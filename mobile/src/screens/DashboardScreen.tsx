@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useLayoutEffect, useRef, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated, Modal, TextInput, ScrollView, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { getDocuments, initDb, countDocuments, deleteDocument, updateDocument } from '../storage/db';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { getDocuments, initDb, countDocuments, deleteDocument, updateDocument, addDocument } from '../storage/db';
 import { syncDocumentDelete } from '../storage/sync';
 import type { DocumentItem } from '../types';
 import { supabase } from '../supabase';
@@ -39,6 +39,20 @@ function iconForType(type?: string): { name: keyof typeof Ionicons.glyphMap; col
   }
 }
 
+function brandIconName(brand?: string) {
+  switch ((brand || '').toLowerCase()) {
+    case 'visa': return 'cc-visa';
+    case 'mastercard': return 'cc-mastercard';
+    case 'american express': return 'cc-amex';
+    case 'discover': return 'cc-discover';
+    case 'diners club': return 'cc-diners-club';
+    case 'jcb': return 'cc-jcb';
+    case 'elo': return 'credit-card';
+    case 'hipercard': return 'credit-card';
+    default: return 'credit-card';
+  }
+}
+
 export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; onLogout?: () => void; userId: string; }) {
   const navigation = useNavigation<any>();
   const { showToast } = useToast();
@@ -46,7 +60,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const [limitReached, setLimitReached] = useState(false);
   const [deviceCount, setDeviceCount] = useState<number | null>(null);
   const [deviceLimit, setDeviceLimit] = useState<number | null>(null);
-  const [menuFor, setMenuFor] = useState<number | null>(null);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [shareDoc, setShareDoc] = useState<DocumentItem | null>(null);
@@ -140,12 +154,11 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
           );
           const byKey = new Map<string, DocumentItem>();
           for (const loc of items) {
-            const k = String(loc.appId || loc.id || `${loc.name}-${loc.number}`);
+            const k = keyForItem(loc);
             byKey.set(k, loc);
           }
           for (const rem of mapped) {
-            // prefer remote image URLs if present, merge by appId
-            const k = String(rem.appId || `${rem.name}-${rem.number}`);
+            const k = keyForItem(rem);
             const prev = byKey.get(k);
             const mergedItem: DocumentItem = {
               ...(prev || {}),
@@ -250,28 +263,19 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
     setShareDoc(doc);
   };
 
-  const onDelete = async (doc: DocumentItem) => {
-    Alert.alert('Excluir', `Deseja excluir '${doc.name}'?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => {
-        try {
-          if (doc.id) {
-            await deleteDocument(doc.id);
-            try { await syncDocumentDelete(doc.appId || String(doc.id), userId); } catch {}
-            await load();
-            showToast('Documento excluído', { type: 'success' });
-          }
-        } catch (e) {
-          Alert.alert('Erro ao excluir', String(e));
-        }
-      } },
-    ]);
-  };
+  function keyForItem(d: DocumentItem): string {
+  return String(d.appId || d.id || `${d.name}-${d.number}-${d.type || 'Outros'}`);
+}
 
   const onToggleFavorite = async (doc: DocumentItem) => {
     try {
-      await updateDocument({ ...doc, favorite: doc.favorite ? 0 : 1, synced: 0 });
+      if (doc.id) {
+        await updateDocument({ ...doc, favorite: doc.favorite ? 0 : 1, synced: 0 });
+      } else {
+        await addDocument({ ...doc, favorite: doc.favorite ? 0 : 1, synced: 0 });
+      }
       await load();
+      showToast(doc.favorite ? 'Removido dos favoritos' : 'Adicionado aos favoritos', { type: 'success' });
     } catch (e) {
       Alert.alert('Erro ao atualizar favorito', String(e));
     }
@@ -280,26 +284,35 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const renderItem = ({ item }: { item: DocumentItem }) => {
     const icon = iconForType(item.type);
     const hasId = typeof item.id === 'number';
+    const itemKey = keyForItem(item);
+    const isOpen = menuFor === itemKey;
     return (
-      <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation: menuFor === item.id ? 12 : 2, zIndex: menuFor === item.id ? 1000 : 0, overflow:'visible' }}>
+      <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation: isOpen ? 12 : 2, zIndex: isOpen ? 1000 : 0, overflow:'visible' }}>
         <View style={{ flexDirection:'row', alignItems:'center' }}>
           <View style={{ width:36, height:36, borderRadius:8, backgroundColor:'#F9FAFB', alignItems:'center', justifyContent:'center', marginRight:10 }}>
-            <Ionicons name={icon.name} size={22} color={icon.color} />
+            {item.type === 'Cartões' && !!item.cardBrand ? (
+              <FontAwesome name={brandIconName(item.cardBrand) as any} size={20} color={'#374151'} />
+            ) : (
+              <Ionicons name={icon.name} size={22} color={icon.color} />
+            )}
           </View>
           <View style={{ flex:1 }}>
             <Text style={{ fontSize:16, fontWeight:'700', color:'#111827' }}>{item.name}</Text>
             <Text style={{ fontSize:12, color:'#6B7280', marginTop:4 }}>{item.type || 'Documento'}</Text>
           </View>
-          {hasId && (
-            <TouchableOpacity onPress={() => setMenuFor(item.id!)}>
-              <Ionicons name='ellipsis-vertical' size={20} color={'#9CA3AF'} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={() => setMenuFor(itemKey)}>
+            <Ionicons name='ellipsis-vertical' size={20} color={'#9CA3AF'} />
+          </TouchableOpacity>
         </View>
         <Text style={{ fontSize:12, color:'#374151', marginTop:10 }}>{item.number || '—'}</Text>
 
-        {menuFor === item.id && (
+        {isOpen && (
             <Pressable onStartShouldSetResponder={() => true} style={{ position:'absolute', right:14, top:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:10, shadowColor:'#000', shadowOpacity:0.08, shadowRadius:14, elevation:12, zIndex: 2000 }}>
+              <TouchableOpacity onPress={() => { setMenuFor(null); onToggleFavorite(item); }} style={{ paddingVertical:10, paddingHorizontal:14, flexDirection:'row', alignItems:'center' }}>
+                <Ionicons name={item.favorite ? 'star' : 'star-outline'} size={18} color={primaryColor} style={{ marginRight:8 }} />
+                <Text style={{ fontSize:14, color: primaryColor, fontWeight:'600' }}>{item.favorite ? 'Desfavoritar' : 'Favoritar'}</Text>
+              </TouchableOpacity>
+              <View style={{ height:1, backgroundColor:'#E5E7EB' }} />
               <TouchableOpacity onPress={() => { setMenuFor(null); onEdit(item); }} style={{ paddingVertical:10, paddingHorizontal:14, flexDirection:'row', alignItems:'center' }}>
                 <Ionicons name='create-outline' size={18} color={'#111827'} style={{ marginRight:8 }} />
                 <Text style={{ fontSize:14, color: '#111827', fontWeight:'600' }}>Editar</Text>
@@ -463,7 +476,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
       ) : (
         <FlatList
           data={filteredDocs}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => keyForItem(item)}
           renderItem={renderItem}
           numColumns={2}
           columnWrapperStyle={{ justifyContent:'space-between', paddingHorizontal:8 }}
