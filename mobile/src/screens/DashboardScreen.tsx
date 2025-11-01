@@ -158,8 +158,16 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
             byKey.set(k, loc);
           }
           for (const rem of mapped) {
-            const k = keyForItem(rem);
-            const prev = byKey.get(k);
+            const matchLoc = items.find(loc => (
+              String(loc.id) === String(rem.appId) &&
+              (
+                (loc.number && rem.number && loc.number === rem.number) ||
+                (loc.name && rem.name && loc.name === rem.name) ||
+                (loc.cardType && rem.cardType && loc.cardType === rem.cardType)
+              )
+            ));
+            const targetKey = matchLoc ? keyForItem(matchLoc) : keyForItem(rem);
+            const prev = byKey.get(targetKey);
             const mergedItem: DocumentItem = {
               ...(prev || {}),
               ...(rem || {}),
@@ -169,7 +177,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
               backImageUri: rem.backImageUri || prev?.backImageUri,
               updatedAt: rem.updatedAt ?? prev?.updatedAt,
             };
-            byKey.set(k, mergedItem);
+            byKey.set(targetKey, mergedItem);
           }
           const merged = Array.from(byKey.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
           setDocs(merged);

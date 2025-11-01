@@ -189,10 +189,11 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
 
     const f = frontUri ? await saveImageToLocal(frontUri) : '';
     const b = backUri ? await saveImageToLocal(backUri) : '';
-    const id = await addDocument({ name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
+    const appIdNew = document?.appId || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const id = await addDocument({ appId: appIdNew, name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
     setSaving(false);
     try {
-      await syncDocumentAddOrUpdate({ id, appId: document?.appId, name, number, frontImageUri: f, backImageUri: b }, userId);
+      await syncDocumentAddOrUpdate({ id, appId: appIdNew, name, number, frontImageUri: f, backImageUri: b }, userId);
     } catch {}
     showToast('Documento criado', { type: 'success' });
     onSaved();
