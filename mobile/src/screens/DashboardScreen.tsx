@@ -48,6 +48,9 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const [shareDoc, setShareDoc] = useState<DocumentItem | null>(null);
   const menuScale = useRef(new Animated.Value(0.95)).current;
   const menuOpacity = useRef(new Animated.Value(0)).current;
+  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const typeMenuScale = useRef(new Animated.Value(0.95)).current;
+  const typeMenuOpacity = useRef(new Animated.Value(0)).current;
 
   // Busca e filtros
   const [query, setQuery] = useState('');
@@ -136,6 +139,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
             const mergedItem: DocumentItem = {
               ...(prev || {}),
               ...(rem || {}),
+              name: rem.name || prev?.name || 'Documento',
               frontImageUri: rem.frontImageUri || prev?.frontImageUri,
               backImageUri: rem.backImageUri || prev?.backImageUri,
               updatedAt: rem.updatedAt ?? prev?.updatedAt,
@@ -192,6 +196,16 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
       ),
       headerRight: () => (
         <View style={{ flexDirection:'row', alignItems:'center' }}>
+          <View style={{ position:'relative', paddingVertical:6, paddingHorizontal:10, marginRight: 6 }}>
+            <TouchableOpacity onPress={() => setNotificationsOpen(true)}>
+              <Ionicons name={notifMessages.length ? 'notifications' : 'notifications-outline'} size={22} color={colors.text} />
+            </TouchableOpacity>
+            {notifMessages.length > 0 && (
+              <View style={{ position:'absolute', top:2, right:6, backgroundColor: dangerColor, borderRadius:9, minWidth:18, height:18, alignItems:'center', justifyContent:'center', paddingHorizontal:3 }}>
+                <Text style={{ color:'#fff', fontSize:10, fontWeight:'800' }}>{notifMessages.length > 9 ? '9+' : String(notifMessages.length)}</Text>
+              </View>
+            )}
+          </View>
           <TouchableOpacity onPress={() => setHeaderMenuOpen(true)} style={{ paddingVertical:6, paddingHorizontal:10, marginRight: 10 }}>
             <Ionicons name='ellipsis-vertical' size={22} color={colors.text} />
           </TouchableOpacity>
@@ -248,9 +262,6 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
             <Text style={{ fontSize:16, fontWeight:'700', color:'#111827' }}>{item.name}</Text>
             <Text style={{ fontSize:12, color:'#6B7280', marginTop:4 }}>{item.type || 'Documento'}</Text>
           </View>
-          <TouchableOpacity onPress={() => onToggleFavorite(item)} style={{ marginRight:8 }}>
-            <Ionicons name={item.favorite ? 'star' : 'star-outline'} size={20} color={item.favorite ? '#F59E0B' : '#9CA3AF'} />
-          </TouchableOpacity>
           {hasId && (
             <TouchableOpacity onPress={() => setMenuFor(item.id!)}>
               <Ionicons name='ellipsis-vertical' size={20} color={'#9CA3AF'} />
@@ -263,7 +274,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
             <Pressable onStartShouldSetResponder={() => true} style={{ position:'absolute', right:14, top:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:10, shadowColor:'#000', shadowOpacity:0.08, shadowRadius:14, elevation:12, zIndex: 2000 }}>
               <TouchableOpacity onPress={() => { setMenuFor(null); onEdit(item); }} style={{ paddingVertical:10, paddingHorizontal:14, flexDirection:'row', alignItems:'center' }}>
                 <Ionicons name='create-outline' size={18} color={'#111827'} style={{ marginRight:8 }} />
-                <Text style={{ fontSize:14, color:'#111827', fontWeight:'600' }}>Editar</Text>
+                <Text style={{ fontSize:14, color: '#111827', fontWeight:'600' }}>Editar</Text>
               </TouchableOpacity>
               <View style={{ height:1, backgroundColor:'#E5E7EB' }} />
               <TouchableOpacity onPress={() => { setMenuFor(null); onShare(item); }} style={{ paddingVertical:10, paddingHorizontal:14, flexDirection:'row', alignItems:'center' }}>
@@ -364,36 +375,58 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
     });
   }, [navigation, logoError, notifMessages.length]);
 
+  // Dropdown de tipos: animação de abertura/fechamento
+  useEffect(() => {
+    if (typeMenuOpen) {
+      Animated.parallel([
+        Animated.timing(typeMenuScale, { toValue: 1, duration: 120, useNativeDriver: true }),
+        Animated.timing(typeMenuOpacity, { toValue: 1, duration: 120, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(typeMenuScale, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+        Animated.timing(typeMenuOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [typeMenuOpen]);
+
   return (
-    <>
     <View style={{ flex:1, backgroundColor: bgColor }}>
 
       {/* Busca e filtros */}
       <View style={{ paddingHorizontal:16, paddingTop:8 }}>
         <View style={{ flexDirection:'row', alignItems:'center' }}>
-          <Ionicons name='search' size={18} color={'#6B7280'} style={{ position:'absolute', left: 22, zIndex:1 }} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder='Buscar por nome ou número…'
-            placeholderTextColor={'#9CA3AF'}
-            style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', paddingVertical:10, paddingLeft:36, paddingRight:12, borderRadius:10 }}
-          />
+          <View style={{ flex:1, position:'relative' }}>
+            <Ionicons name='search' size={18} color={'#6B7280'} style={{ position:'absolute', left: 12, top: 10, zIndex:1 }} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder='Buscar por nome ou número…'
+              placeholderTextColor={'#9CA3AF'}
+              style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#D1D5DB', paddingVertical:10, paddingLeft:36, paddingRight:12, borderRadius:10 }}
+            />
+          </View>
+          <Pressable onPress={() => setTypeMenuOpen(true)} style={{ marginLeft:8, flexBasis:160, borderWidth:1, borderColor:'#D1D5DB', backgroundColor:'#fff', paddingVertical:10, paddingHorizontal:12, borderRadius:10, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
+            <Text style={{ color:'#374151', fontWeight:'600' }}>{typeFilter ?? 'Tipo'}</Text>
+            <Ionicons name='chevron-down' size={16} color={'#6B7280'} />
+          </Pressable>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop:8 }} contentContainerStyle={{ paddingRight:16 }}>
-          {renderChip('Todos', typeFilter === null, () => setTypeFilter(null))}
-          {renderChip('RG', typeFilter === 'RG', () => setTypeFilter(typeFilter === 'RG' ? null : 'RG'))}
-          {renderChip('CNH', typeFilter === 'CNH', () => setTypeFilter(typeFilter === 'CNH' ? null : 'CNH'))}
-          {renderChip('CPF', typeFilter === 'CPF', () => setTypeFilter(typeFilter === 'CPF' ? null : 'CPF'))}
-          {renderChip('Passaporte', typeFilter === 'Passaporte', () => setTypeFilter(typeFilter === 'Passaporte' ? null : 'Passaporte'))}
-          {renderChip('Outros', typeFilter === 'Outros', () => setTypeFilter(typeFilter === 'Outros' ? null : 'Outros'))}
-          <View style={{ width:8 }} />
-          <TouchableOpacity onPress={() => setSyncedOnly(s => !s)} style={{ flexDirection:'row', alignItems:'center', paddingVertical:8, paddingHorizontal:12, borderRadius:20, borderWidth:1, borderColor: syncedOnly ? primaryColor : '#E5E7EB', backgroundColor: syncedOnly ? '#EFF6FF' : '#fff' }}>
-            <Ionicons name={syncedOnly ? 'cloud' : 'cloud-outline'} size={16} color={syncedOnly ? primaryColor : '#6B7280'} style={{ marginRight:6 }} />
-            <Text style={{ color: syncedOnly ? primaryColor : '#374151', fontWeight:'600' }}>Sincronizados</Text>
-          </TouchableOpacity>
-        </ScrollView>
       </View>
+
+      {typeMenuOpen && (
+        <>
+          <Pressable onPress={() => setTypeMenuOpen(false)} style={{ position:'absolute', left:0, right:0, top:0, bottom:0, zIndex:30, backgroundColor:'rgba(17,24,39,0.03)' }} />
+          <Animated.View style={{ position:'absolute', top: 64, right: 16, opacity: typeMenuOpacity, transform:[{ scale: typeMenuScale }], zIndex:40 }}>
+            <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.12, shadowRadius:18, elevation:4, overflow:'hidden', minWidth: 180 }}>
+              {['Todos','RG','CNH','CPF','Passaporte','Outros'].map((label) => (
+                <Pressable key={label} onPress={() => { setTypeMenuOpen(false); setTypeFilter(label === 'Todos' ? null : label); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#F9FAFB' : '#fff' })}>
+                  <Text style={{ fontSize:14, color:'#111827', fontWeight:'700' }}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </Animated.View>
+        </>
+      )}
 
       {notifMessages.length > 0 && (
         <TouchableOpacity onPress={() => setNotificationsOpen(true)} style={{ marginHorizontal:16, marginBottom:8, paddingVertical:8, paddingHorizontal:12, backgroundColor:'#FEF9C3', borderRadius:8, borderWidth:1, borderColor:'#FDE68A' }}>
@@ -488,11 +521,10 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
         <Ionicons name='add' size={20} color='#fff' style={{ marginRight:6 }} />
         <Text style={{ color:'#fff', fontWeight:'800', fontSize:16 }}>Novo</Text>
       </TouchableOpacity>
-    </View>
     {shareDoc && (
       <ShareSheet visible={true} onClose={() => setShareDoc(null)} document={shareDoc} userId={userId} />
     )}
-  </>
+    </View>
   );
 }
 

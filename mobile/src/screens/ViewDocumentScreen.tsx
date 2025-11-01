@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Image, ScrollView, TouchableOpacity, Share, Alert } from 'react-native';
+import { View, Text, Image, ScrollView, TouchableOpacity, Share, Alert, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { deleteDocument } from '../storage/db';
 import { syncDocumentDelete } from '../storage/sync';
@@ -7,6 +7,8 @@ import type { DocumentItem } from '../types';
 import { Platform } from 'react-native';
 import { colors } from '../theme/colors';
 import ShareSheet from '../components/ShareSheet';
+import { typography } from '../theme/typography';
+import { spacing } from '../theme/spacing';
 
 const primaryColor = colors.brandPrimary;
 const dangerColor = colors.danger;
@@ -56,13 +58,13 @@ function formatNumberByType(type: DocType, value?: string) {
 export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId }: { document: DocumentItem; onDeleted: () => void; onEdit?: () => void; userId: string; }) {
   if (!document) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: bgColor }}>
-        <Ionicons name='alert-circle' size={48} color='#6B7280' style={{ marginBottom: 12 }} />
-        <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 }}>Documento não encontrado</Text>
-        <TouchableOpacity onPress={onDeleted} style={{ backgroundColor: primaryColor, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, backgroundColor: bgColor }}>
+        <Ionicons name='alert-circle' size={48} color='#6B7280' style={{ marginBottom: spacing.sm }} />
+        <Text style={{ fontSize: typography.sizes.subtitle, fontWeight: '700', color: '#111827', marginBottom: spacing.xs }}>Documento não encontrado</Text>
+        <Pressable onPress={onDeleted} style={({ pressed }) => ({ backgroundColor: pressed ? colors.brandPrimaryDark : primaryColor, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: 12, flexDirection: 'row', alignItems: 'center', shadowColor:'#000', shadowOpacity: pressed ? 0.06 : 0, shadowRadius: pressed ? 8 : 0 })}>
           <Ionicons name='arrow-back' size={18} color='#fff' style={{ marginRight: 6 }} />
-          <Text style={{ color: '#fff', fontWeight: '700' }}>Voltar</Text>
-        </TouchableOpacity>
+          <Text style={{ color: '#fff', fontWeight: '800' }}>Voltar</Text>
+        </Pressable>
       </View>
     );
   }
@@ -87,46 +89,46 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
 
   return (
     <>
-    <ScrollView style={{ flex: 1, backgroundColor: bgColor }} contentContainerStyle={{ padding: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: bgColor }} contentContainerStyle={{ padding: spacing.lg }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} ellipsizeMode='tail' style={{ fontSize: 22, fontWeight: '800', color: '#111827', marginRight: 8, flexShrink: 1 }}>{document.name}</Text>
+          <Text numberOfLines={1} ellipsizeMode='tail' style={{ fontSize: typography.sizes.subtitle, fontWeight: '800', color: '#111827', marginRight: 8, flexShrink: 1 }}>{document.name}</Text>
         </View>
         {Platform.OS === 'web' ? (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={shareDoc} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable onPress={shareDoc} style={({ pressed }) => ({ paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: 12, backgroundColor: pressed ? '#F9FAFB' : '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center', shadowColor:'#000', shadowOpacity: pressed ? 0.06 : 0, shadowRadius: pressed ? 8 : 0 })}>
               <Ionicons name='share-social' size={18} color={primaryColor} style={{ marginRight: 6 }} />
               <Text style={{ color: primaryColor, fontWeight: '700' }}></Text>
-            </TouchableOpacity>
+            </Pressable>
             <View style={{ width: 8 }} />
-            <TouchableOpacity onPress={() => onEdit?.()} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable onPress={() => onEdit?.()} style={({ pressed }) => ({ paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: 12, backgroundColor: pressed ? '#F9FAFB' : '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center', shadowColor:'#000', shadowOpacity: pressed ? 0.06 : 0, shadowRadius: pressed ? 8 : 0 })}>
               <Ionicons name='pencil' size={18} color={primaryColor} style={{ marginRight: 6 }} />
               <Text style={{ color: primaryColor, fontWeight: '700' }}></Text>
-            </TouchableOpacity>
+            </Pressable>
             <View style={{ width: 8 }} />
-            <TouchableOpacity onPress={() => exportAsPDF(document.name, document.frontImageUri, document.backImageUri)} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable onPress={() => exportAsPDF(document.name, document.frontImageUri, document.backImageUri)} style={({ pressed }) => ({ paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: 12, backgroundColor: pressed ? '#F9FAFB' : '#fff', borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center', shadowColor:'#000', shadowOpacity: pressed ? 0.06 : 0, shadowRadius: pressed ? 8 : 0 })}>
               <Ionicons name='download' size={18} color={primaryColor} style={{ marginRight: 6 }} />
               <Text style={{ color: primaryColor, fontWeight: '700' }}></Text>
-            </TouchableOpacity>
+            </Pressable>
             <View style={{ width: 8 }} />
-            <TouchableOpacity onPress={remove} style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: dangerColor, flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable onPress={remove} style={({ pressed }) => ({ paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: 12, backgroundColor: pressed ? '#ef3d3d' : dangerColor, flexDirection: 'row', alignItems: 'center', shadowColor:'#000', shadowOpacity: pressed ? 0.06 : 0, shadowRadius: pressed ? 8 : 0 })}>
               <Ionicons name='trash' size={18} color='#fff' style={{ marginRight: 6 }} />
               <Text style={{ color: '#fff', fontWeight: '700' }}></Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ) : (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => onEdit?.()} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }}>
+            <Pressable onPress={() => onEdit?.()} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', shadowColor:'#000', shadowOpacity: pressed ? 0.06 : 0, shadowRadius: pressed ? 8 : 0 })}>
               <Ionicons name='pencil' size={18} color={primaryColor} />
-            </TouchableOpacity>
+            </Pressable>
             <View style={{ width: 8 }} />
-            <TouchableOpacity onPress={() => exportAsPDF(document.name, document.frontImageUri, document.backImageUri)} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }}>
+            <Pressable onPress={() => exportAsPDF(document.name, document.frontImageUri, document.backImageUri)} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', shadowColor:'#000', shadowOpacity: pressed ? 0.06 : 0, shadowRadius: pressed ? 8 : 0 })}>
               <Ionicons name='download' size={18} color={primaryColor} />
-            </TouchableOpacity>
+            </Pressable>
             <View style={{ width: 8 }} />
-            <TouchableOpacity onPress={remove} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: dangerColor, alignItems: 'center', justifyContent: 'center' }}>
+            <Pressable onPress={remove} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 10, backgroundColor: dangerColor, alignItems: 'center', justifyContent: 'center', shadowColor:'#000', shadowOpacity: pressed ? 0.06 : 0, shadowRadius: pressed ? 8 : 0 })}>
               <Ionicons name='trash' size={18} color='#fff' />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         )}
         </View>

@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Switch, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Switch, Platform, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { colors } from '../theme/colors';
 import { getOrCreateDeviceId, getDeviceLockEnabled, setDeviceLockEnabled } from '../utils/device';
+import { typography } from '../theme/typography';
+import { spacing } from '../theme/spacing';
 
 export default function ProfileScreen({ navigation }: any) {
   const [email, setEmail] = useState<string>('');
@@ -152,94 +154,94 @@ export default function ProfileScreen({ navigation }: any) {
   }, [refresh]);
 
   return (
-    <View style={{ flex:1, backgroundColor: bg, padding:16 }}>
+    <View style={{ flex:1, backgroundColor: bg, padding: spacing.lg }}>
       <View style={{ width:'100%', maxWidth:720, alignSelf:'center' }}>
-        <Text style={{ fontSize:22, fontWeight:'800', color: text, marginBottom:12 }}>Seu perfil</Text>
+        <Text style={{ fontSize: typography.sizes.subtitle, fontWeight: '800', color: text, marginBottom: spacing.sm }}>Seu perfil</Text>
 
-        <View style={{ backgroundColor: cardBg, borderWidth:1, borderColor: border, borderRadius:16, padding:16 }}>
+        <View style={{ backgroundColor: cardBg, borderWidth:1, borderColor: border, borderRadius:16, padding: spacing.lg }}>
           {loading ? (
-            <View style={{ alignItems:'center', justifyContent:'center', paddingVertical:20 }}>
+            <View style={{ alignItems:'center', justifyContent:'center', paddingVertical: spacing.md }}>
               <ActivityIndicator color={primary} />
             </View>
           ) : (
             <>
-              <View style={{ flexDirection:'row', alignItems:'center', marginBottom:12 }}>
+              <View style={{ flexDirection:'row', alignItems:'center', marginBottom: spacing.sm }}>
                 <Ionicons name='person-circle' size={28} color={accent} style={{ marginRight:8 }} />
                 <View style={{ flex:1 }}>
-                  <Text style={{ color: text, fontWeight:'800' }}>{email || '—'}</Text>
-                  <Text style={{ color: mutedText, fontSize:12 }}>{userId || '—'}</Text>
+                  <Text style={{ color: text, fontWeight: '800' }}>{email || '—'}</Text>
+                  <Text style={{ color: mutedText, fontSize: typography.sizes.caption }}>{userId || '—'}</Text>
                 </View>
               </View>
 
-              <View style={{ height:1, backgroundColor: border, marginVertical:8 }} />
+              <View style={{ height:1, backgroundColor: border, marginVertical: spacing.xs }} />
 
-              <View style={{ flexDirection:'row', alignItems:'center', marginBottom:10 }}>
+              <View style={{ flexDirection:'row', alignItems:'center', marginBottom: spacing.xs }}>
                 <Ionicons name='star' size={18} color={plan === 'premium' ? accent : '#9CA3AF'} style={{ marginRight:8 }} />
-                <Text style={{ color: text, fontWeight:'700' }}>Plano atual:</Text>
-                <Text style={{ color: plan === 'premium' ? accent : text, marginLeft:6, fontWeight:'700' }}>{plan === 'premium' ? 'Premium' : 'Freemium'}</Text>
+                <Text style={{ color: text, fontWeight: '700' }}>Plano atual:</Text>
+                <Text style={{ color: plan === 'premium' ? accent : text, marginLeft:6, fontWeight: '700' }}>{plan === 'premium' ? 'Premium' : 'Freemium'}</Text>
               </View>
 
               <View style={{ flexDirection:'row', alignItems:'center' }}>
                 <Ionicons name='hardware-chip' size={18} color={'#9CA3AF'} style={{ marginRight:8 }} />
-                <Text style={{ color: text, fontWeight:'700' }}>Dispositivos conectados:</Text>
+                <Text style={{ color: text, fontWeight: '700' }}>Dispositivos conectados:</Text>
                 <Text style={{ color: text, marginLeft:6 }}>{devices}</Text>
               </View>
 
-              <View style={{ height:12 }} />
+              <View style={{ height: spacing.md }} />
 
               <View style={{ flexDirection:'row', flexWrap:'wrap' }}>
-                <TouchableOpacity onPress={refresh} style={{ borderWidth:2, borderColor: primary, paddingVertical:10, paddingHorizontal:14, borderRadius:10, marginRight:8, marginBottom:8, flexDirection:'row', alignItems:'center' }}>
+                <Pressable onPress={refresh} style={({ pressed }) => ({ borderWidth:2, borderColor: primary, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius:10, marginRight: spacing.xs, marginBottom: spacing.xs, flexDirection:'row', alignItems:'center', shadowColor:'#000', shadowOpacity: pressed ? 0.06 : 0, shadowRadius: pressed ? 8 : 0 })}>
                   <Ionicons name='refresh' size={18} color={primary} style={{ marginRight:6 }} />
-                  <Text style={{ color: primary, fontWeight:'800' }}>Atualizar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('Plans')} style={{ backgroundColor: primary, paddingVertical:10, paddingHorizontal:14, borderRadius:10, marginRight:8, marginBottom:8, flexDirection:'row', alignItems:'center' }}>
+                  <Text style={{ color: primary, fontWeight: '800' }}>Atualizar</Text>
+                </Pressable>
+                <Pressable onPress={() => navigation.navigate('Plans')} style={({ pressed }) => ({ backgroundColor: pressed ? colors.brandPrimaryDark : primary, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius:10, marginRight: spacing.xs, marginBottom: spacing.xs, flexDirection:'row', alignItems:'center', shadowColor:'#000', shadowOpacity: pressed ? 0.1 : 0.06, shadowRadius: pressed ? 10 : 8 })}>
                   <Ionicons name='pricetags' size={18} color={'#fff'} style={{ marginRight:6 }} />
-                  <Text style={{ color:'#fff', fontWeight:'800' }}>{plan === 'premium' ? 'Gerenciar plano' : 'Ver planos'}</Text>
-                </TouchableOpacity>
+                  <Text style={{ color:'#fff', fontWeight: '800' }}>{plan === 'premium' ? 'Gerenciar plano' : 'Ver planos'}</Text>
+                </Pressable>
               </View>
 
-              <View style={{ height:1, backgroundColor: border, marginVertical:12 }} />
+              <View style={{ height:1, backgroundColor: border, marginVertical: spacing.md }} />
 
               {/* Segurança */}
-              <View style={{ borderWidth:1, borderColor: border, backgroundColor: colors.surface, borderRadius:12, padding:12, marginBottom:12 }}>
+              <View style={{ borderWidth:1, borderColor: border, backgroundColor: colors.surface, borderRadius:12, padding: spacing.md, marginBottom: spacing.sm }}>
                 <View style={{ flexDirection:'row', alignItems:'center' }}>
                   <Ionicons name='lock-closed' size={18} color={colors.mutedIcon} style={{ marginRight:8 }} />
-                  <Text style={{ color: text, fontWeight:'700', flex:1 }}>Usar PIN/Biometria do dispositivo</Text>
+                  <Text style={{ color: text, fontWeight: '700', flex:1 }}>Usar PIN/Biometria do dispositivo</Text>
                   {lockEnabled === null ? (
                     <ActivityIndicator />
                   ) : (
                     <Switch value={!!lockEnabled} onValueChange={onToggleLock} />
                   )}
                 </View>
-                <Text style={{ color: mutedText, fontSize:12, marginTop:6 }}>
+                <Text style={{ color: mutedText, fontSize: typography.sizes.caption, marginTop: spacing.xs }}>
                   Quando ativo, você precisará se autenticar com o PIN/biometria do dispositivo para abrir o app.
                 </Text>
               </View>
 
-              <Text style={{ color: text, fontWeight:'800', marginBottom:8 }}>Seus dispositivos</Text>
+              <Text style={{ color: text, fontWeight: '800', marginBottom: spacing.xs }}>Seus dispositivos</Text>
               {devicesList.length === 0 ? (
                 <Text style={{ color: mutedText }}>Nenhum dispositivo registrado.</Text>
               ) : (
                 <View>
                   {devicesList.map((d) => (
-                    <View key={d.device_id} style={{ borderWidth:1, borderColor: border, backgroundColor: colors.surface, borderRadius:12, padding:12, marginBottom:10 }}>
+                    <View key={d.device_id} style={{ borderWidth:1, borderColor: border, backgroundColor: colors.surface, borderRadius:12, padding: spacing.md, marginBottom: spacing.xs }}>
                       <View style={{ flexDirection:'row', alignItems:'center' }}>
                         <Ionicons name='phone-portrait' size={18} color={colors.mutedIcon} style={{ marginRight:8 }} />
                         <View style={{ flex:1 }}>
-                          <Text style={{ color: text, fontWeight:'700' }}>{d.label || d.platform || 'dispositivo'}</Text>
-                          <Text style={{ color: mutedText, fontSize:12 }}>{d.device_id}{d.device_id === currentDeviceId ? '  •  este dispositivo' : ''}</Text>
-                          <Text style={{ color: mutedText, fontSize:12 }}>Último acesso: {formatDateTime(d.last_seen)}</Text>
+                          <Text style={{ color: text, fontWeight: '700' }}>{d.label || d.platform || 'dispositivo'}</Text>
+                          <Text style={{ color: mutedText, fontSize: typography.sizes.caption }}>{d.device_id}{d.device_id === currentDeviceId ? '  •  este dispositivo' : ''}</Text>
+                          <Text style={{ color: mutedText, fontSize: typography.sizes.caption }}>Último acesso: {formatDateTime(d.last_seen)}</Text>
                         </View>
-                        <TouchableOpacity onPress={() => onRevoke(d.device_id)} style={{ paddingVertical:8, paddingHorizontal:12, borderRadius:8, backgroundColor: '#FFF1F2', borderWidth:1, borderColor: '#FCA5A5' }}>
-                          <Text style={{ color: '#B91C1C', fontWeight:'800' }}>Revogar acesso</Text>
-                        </TouchableOpacity>
+                        <Pressable onPress={() => onRevoke(d.device_id)} style={({ pressed }) => ({ paddingVertical: spacing.xs, paddingHorizontal: spacing.md, borderRadius:8, backgroundColor: pressed ? '#FFE4E6' : '#FFF1F2', borderWidth:1, borderColor: '#FCA5A5', opacity: pressed ? 0.95 : 1 })}>
+                          <Text style={{ color: '#B91C1C', fontWeight: '800' }}>Revogar acesso</Text>
+                        </Pressable>
                       </View>
                     </View>
                   ))}
                 </View>
               )}
 
-              <Text style={{ color: mutedText, fontSize:12, marginTop:6 }}>A contagem considera cada dispositivo autenticado nas últimas sessões.</Text>
+              <Text style={{ color: mutedText, fontSize: typography.sizes.caption, marginTop: spacing.xs }}>A contagem considera cada dispositivo autenticado nas últimas sessões.</Text>
             </>
           )}
         </View>
