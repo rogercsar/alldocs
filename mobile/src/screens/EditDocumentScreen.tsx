@@ -8,6 +8,7 @@ import { syncDocumentAddOrUpdate } from '../storage/sync';
 import type { DocumentItem } from '../types';
 import { colors } from '../theme/colors';
 import DateTimePicker from '@react-native-community/datetimepicker'
+import { ToastProvider, useToast } from '../components/Toast';
 
 const primaryColor = colors.brandPrimary;
 const bgColor = colors.bg;
@@ -41,6 +42,7 @@ function getTemplate(type: typeof DOC_TYPES[number]) {
 }
 
 export default function EditDocumentScreen({ onSaved, userId, document }: { onSaved: () => void; userId: string; document?: DocumentItem }) {
+  const { showToast } = useToast();
   const [name, setName] = useState(document?.name || '');
   const [number, setNumber] = useState(document?.number || '');
   const [frontUri, setFrontUri] = useState<string | undefined>(document?.frontImageUri || undefined);
@@ -153,10 +155,10 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
       const b = backUri ? await saveImageToLocal(backUri) : (document.backImageUri || '');
       await updateDocument({ id: document.id, appId: document.appId, name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
       setSaving(false);
-      // Sync remoto com appId global
       try {
         await syncDocumentAddOrUpdate({ id: document.id, appId: document.appId, name, number, frontImageUri: f, backImageUri: b }, userId);
       } catch {}
+      showToast('Alterações salvas', { type: 'success' });
       onSaved();
       return;
     }
@@ -165,10 +167,10 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     const b = backUri ? await saveImageToLocal(backUri) : '';
     const id = await addDocument({ name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
     setSaving(false);
-    // Sync remoto com appId global
     try {
       await syncDocumentAddOrUpdate({ id, appId: document?.appId, name, number, frontImageUri: f, backImageUri: b }, userId);
     } catch {}
+    showToast('Documento criado', { type: 'success' });
     onSaved();
   }
 

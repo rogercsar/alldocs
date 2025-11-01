@@ -14,6 +14,8 @@ exports.handler = async function(event) {
     const params = event.queryStringParameters || {};
     const userId = params.userId;
     const appId = params.appId ? parseInt(params.appId, 10) : undefined;
+    const ttlParam = params.ttl ? parseInt(params.ttl, 10) : 3600;
+    const expiresSeconds = Math.min(Math.max(ttlParam, 300), 7 * 24 * 60 * 60);
     if (!userId || !appId) return json({ error: 'Missing userId or appId' }, 400);
 
     const { data, error } = await supabase
@@ -35,17 +37,17 @@ exports.handler = async function(event) {
     if (doc?.front_path) {
       const { data: signedFront, error: signErrF } = await supabase.storage
         .from(SUPABASE_BUCKET)
-        .createSignedUrl(doc.front_path, 60 * 60);
-      if (signErrF) throw signErrF;
-      frontSignedUrl = signedFront?.signedUrl || null;
+        .createSignedUrl(doc.front_path, expiresSeconds);
+        if (signErrF) throw signErrF;
+        frontSignedUrl = signedFront?.signedUrl || null;
     }
 
     if (doc?.back_path) {
       const { data: signedBack, error: signErrB } = await supabase.storage
         .from(SUPABASE_BUCKET)
-        .createSignedUrl(doc.back_path, 60 * 60);
-      if (signErrB) throw signErrB;
-      backSignedUrl = signedBack?.signedUrl || null;
+        .createSignedUrl(doc.back_path, expiresSeconds);
+        if (signErrB) throw signErrB;
+        backSignedUrl = signedBack?.signedUrl || null;
     }
 
     return json({ frontSignedUrl, backSignedUrl });

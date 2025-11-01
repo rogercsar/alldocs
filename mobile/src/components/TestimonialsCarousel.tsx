@@ -123,7 +123,7 @@ export default function TestimonialsCarousel({ items, autoPlay = true, interval 
         if (w && w !== pageWidth) setPageWidth(w);
       }}
     >
-      <Animated.FlatList
+      <FlatList
         ref={flatRef}
         data={data}
         keyExtractor={(it) => it.id}

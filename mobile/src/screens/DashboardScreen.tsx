@@ -8,6 +8,9 @@ import { supabase } from '../supabase';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import ShareSheet from '../components/ShareSheet';
+import { useToast } from '../components/Toast';
+import { scheduleExpiryNotifications } from '../utils/notifications';
+import { buildExpiryAlerts, filterByExpiry } from '../utils/expiry';
 
 const primaryColor = colors.brandPrimary;
 const bgColor = colors.bg;
@@ -38,6 +41,7 @@ function iconForType(type?: string): { name: keyof typeof Ionicons.glyphMap; col
 
 export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; onLogout?: () => void; userId: string; }) {
   const navigation = useNavigation<any>();
+  const { showToast } = useToast();
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [limitReached, setLimitReached] = useState(false);
   const [deviceCount, setDeviceCount] = useState<number | null>(null);
@@ -48,7 +52,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const [shareDoc, setShareDoc] = useState<DocumentItem | null>(null);
   const menuScale = useRef(new Animated.Value(0.95)).current;
   const menuOpacity = useRef(new Animated.Value(0)).current;
-  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const typeMenuScale = useRef(new Animated.Value(0.95)).current;
   const typeMenuOpacity = useRef(new Animated.Value(0)).current;
 
@@ -56,16 +60,23 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [syncedOnly, setSyncedOnly] = useState(false);
+  const [expiryFilter, setExpiryFilter] = useState<'all' | 'expired' | 'soon'>('all');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const filteredDocs = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return docs.filter((d) => {
+    const byTextAndType = docs.filter((d) => {
       const matchesQuery = !q || (d.name?.toLowerCase().includes(q) || d.number?.toLowerCase().includes(q));
       const matchesType = !typeFilter || (d.type === typeFilter);
       const matchesSync = !syncedOnly || (d.synced === 1);
-      return matchesQuery && matchesType && matchesSync;
+      const matchesFav = !favoritesOnly || (d.favorite === 1);
+      return matchesQuery && matchesType && matchesSync && matchesFav;
     });
-  }, [docs, query, typeFilter, syncedOnly]);
+    return filterByExpiry(byTextAndType, expiryFilter);
+  }, [docs, query, typeFilter, syncedOnly, favoritesOnly, expiryFilter]);
+
+  const expiredCount = useMemo(() => filterByExpiry(docs, 'expired').length, [docs]);
+  const soonCount = useMemo(() => filterByExpiry(docs, 'soon').length, [docs]);
 
   const load = useCallback(async () => {
     setMenuFor(null);
@@ -140,6 +151,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
               ...(prev || {}),
               ...(rem || {}),
               name: rem.name || prev?.name || 'Documento',
+              number: rem.number || prev?.number || '',
               frontImageUri: rem.frontImageUri || prev?.frontImageUri,
               backImageUri: rem.backImageUri || prev?.backImageUri,
               updatedAt: rem.updatedAt ?? prev?.updatedAt,
@@ -164,6 +176,21 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    (async () => {
+      if (!Array.isArray(docs) || !docs.length) return;
+      try {
+        const SecureStore = await import('expo-secure-store');
+        const pref = await SecureStore.getItemAsync('notificationsEnabled');
+        if (pref === 'true') {
+          scheduleExpiryNotifications(docs).catch(() => {});
+        }
+      } catch {
+        // Sem SecureStore no Web; não agenda automaticamente
+      }
+    })();
+  }, [docs]);
 
   useEffect(() => {
     if (headerMenuOpen) {
@@ -232,6 +259,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
             await deleteDocument(doc.id);
             try { await syncDocumentDelete(doc.appId || String(doc.id), userId); } catch {}
             await load();
+            showToast('Documento excluído', { type: 'success' });
           }
         } catch (e) {
           Alert.alert('Erro ao excluir', String(e));
@@ -316,29 +344,8 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   if (deviceLimitReached) notifMessages.push(`Limite de dispositivos atingido (${deviceCount}/${deviceLimit}). Faça upgrade para adicionar mais.`);
   if (limitReached) notifMessages.push('Limite gratuito de 4 documentos atingido. Desbloqueie Premium.');
 
-  // Alertas de vencimento de documentos
-  const parseDateToMillis = (d?: string) => {
-    if (!d) return null;
-    const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!m) return null;
-    const dd = parseInt(m[1], 10);
-    const mm = parseInt(m[2], 10) - 1;
-    const yyyy = parseInt(m[3], 10);
-    const t = new Date(yyyy, mm, dd).getTime();
-    return Number.isFinite(t) ? t : null;
-  };
-  const now = Date.now();
-  const thresholdMs = 30 * 24 * 60 * 60 * 1000; // 30 dias
-  docs.forEach((doc) => {
-    const exp = parseDateToMillis(doc.expiryDate);
-    if (!exp) return;
-    if (exp < now) {
-      notifMessages.push(`Documento '${doc.name}' está vencido desde ${doc.expiryDate}.`);
-    } else if (exp - now <= thresholdMs) {
-      const days = Math.max(1, Math.ceil((exp - now) / (24 * 60 * 60 * 1000)));
-      notifMessages.push(`Documento '${doc.name}' vence em ${days} dia${days > 1 ? 's' : ''} (${doc.expiryDate}).`);
-    }
-  });
+  // Alertas de vencimento de documentos (util compartilhado)
+  buildExpiryAlerts(docs).forEach((msg) => notifMessages.push(msg));
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -377,7 +384,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
 
   // Dropdown de tipos: animação de abertura/fechamento
   useEffect(() => {
-    if (typeMenuOpen) {
+    if (isTypeMenuOpen) {
       Animated.parallel([
         Animated.timing(typeMenuScale, { toValue: 1, duration: 120, useNativeDriver: true }),
         Animated.timing(typeMenuOpacity, { toValue: 1, duration: 120, useNativeDriver: true }),
@@ -388,7 +395,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
         Animated.timing(typeMenuOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
       ]).start();
     }
-  }, [typeMenuOpen]);
+  }, [isTypeMenuOpen]);
 
   return (
     <View style={{ flex:1, backgroundColor: bgColor }}>
@@ -406,27 +413,33 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
               style={{ backgroundColor:'#F9FAFB', borderWidth:1, borderColor:'#D1D5DB', paddingVertical:10, paddingLeft:36, paddingRight:12, borderRadius:10 }}
             />
           </View>
-          <Pressable onPress={() => setTypeMenuOpen(true)} style={{ marginLeft:8, flexBasis:160, borderWidth:1, borderColor:'#D1D5DB', backgroundColor:'#fff', paddingVertical:10, paddingHorizontal:12, borderRadius:10, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
+          <Pressable onPress={() => setIsTypeMenuOpen(true)} style={{ marginLeft:8, flexBasis:160, borderWidth:1, borderColor:'#D1D5DB', backgroundColor:'#fff', paddingVertical:10, paddingHorizontal:12, borderRadius:10, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
             <Text style={{ color:'#374151', fontWeight:'600' }}>{typeFilter ?? 'Tipo'}</Text>
             <Ionicons name='chevron-down' size={16} color={'#6B7280'} />
           </Pressable>
         </View>
+        <View style={{ flexDirection:'row', marginTop:8 }}>
+          {renderChip('Favoritos', favoritesOnly === true, () => setFavoritesOnly(!favoritesOnly))}
+          {renderChip('Todos', expiryFilter === 'all', () => setExpiryFilter('all'))}
+          {renderChip(`Vencidos (${expiredCount})`, expiryFilter === 'expired', () => setExpiryFilter('expired'))}
+          {renderChip(`Até 30 dias (${soonCount})`, expiryFilter === 'soon', () => setExpiryFilter('soon'))}
+        </View>
       </View>
 
-      {typeMenuOpen && (
-        <>
-          <Pressable onPress={() => setTypeMenuOpen(false)} style={{ position:'absolute', left:0, right:0, top:0, bottom:0, zIndex:30, backgroundColor:'rgba(17,24,39,0.03)' }} />
-          <Animated.View style={{ position:'absolute', top: 64, right: 16, opacity: typeMenuOpacity, transform:[{ scale: typeMenuScale }], zIndex:40 }}>
-            <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.12, shadowRadius:18, elevation:4, overflow:'hidden', minWidth: 180 }}>
-              {['Todos','RG','CNH','CPF','Passaporte','Outros'].map((label) => (
-                <Pressable key={label} onPress={() => { setTypeMenuOpen(false); setTypeFilter(label === 'Todos' ? null : label); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#F9FAFB' : '#fff' })}>
-                  <Text style={{ fontSize:14, color:'#111827', fontWeight:'700' }}>{label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </Animated.View>
-        </>
-      )}
+      {isTypeMenuOpen && (
+  <>
+    <Pressable onPress={() => setIsTypeMenuOpen(false)} style={{ position:'absolute', left:0, right:0, top:0, bottom:0, zIndex:30, backgroundColor:'rgba(17,24,39,0.03)' }} />
+    <Animated.View style={{ position:'absolute', top: 64, right: 16, opacity: typeMenuOpacity, transform:[{ scale: typeMenuScale }], zIndex:40 }}>
+      <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.12, shadowRadius:18, elevation:4, overflow:'hidden', minWidth: 180 }}>
+        {['Todos','RG','CNH','CPF','Passaporte','Outros'].map((label) => (
+          <Pressable key={label} onPress={() => { setIsTypeMenuOpen(false); setTypeFilter(label === 'Todos' ? null : label); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#F9FAFB' : '#fff' })}>
+            <Text style={{ fontSize:14, color:'#111827', fontWeight:'700' }}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </Animated.View>
+  </>
+)}
 
       {notifMessages.length > 0 && (
         <TouchableOpacity onPress={() => setNotificationsOpen(true)} style={{ marginHorizontal:16, marginBottom:8, paddingVertical:8, paddingHorizontal:12, backgroundColor:'#FEF9C3', borderRadius:8, borderWidth:1, borderColor:'#FDE68A' }}>
@@ -508,7 +521,12 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
                 <Text style={{ fontSize:15, color:'#111827', fontWeight:'700' }}>Perfil</Text>
               </Pressable>
               <View style={{ height:1, backgroundColor:'#F3F4F6' }} />
-              <Pressable onPress={() => { setHeaderMenuOpen(false); logout(); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#FEF2F2' : '#fff' })}>
+              <Pressable onPress={() => { setHeaderMenuOpen(false); navigation.navigate('Notifications'); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#F9FAFB' : '#fff' })}>
+                <Ionicons name='notifications' size={18} color={'#111827'} style={{ marginRight:10 }} />
+                <Text style={{ fontSize:15, color:'#111827', fontWeight:'700' }}>Notificações</Text>
+              </Pressable>
+              <View style={{ height:1, backgroundColor:'#F3F4F6' }} />
+              <Pressable onPress={() => { setHeaderMenuOpen(false); logout(); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#EFEFEF' : '#fff' })}>
                 <Ionicons name='log-out' size={18} color={dangerColor} style={{ marginRight:10 }} />
                 <Text style={{ fontSize:15, color: dangerColor, fontWeight:'700' }}>Sair</Text>
               </Pressable>

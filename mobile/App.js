@@ -12,8 +12,11 @@ import PlansScreen from './src/screens/PlansScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
 import { supabase } from './src/supabase';
 import { registerDeviceForUser, getDeviceLockEnabled } from './src/utils/device';
+import { ToastProvider } from './src/components/Toast';
+import { configureNotificationHandler, ensureNotificationPermission } from './src/utils/notifications';
 
 const Stack = createNativeStackNavigator();
 
@@ -57,6 +60,11 @@ export default function App() {
     }
   }, [userId]);
 
+  useEffect(() => {
+    configureNotificationHandler();
+    ensureNotificationPermission().catch(() => {});
+  }, []);
+
   if (!ready) return null;
 
   const isAnonymous = !userId || userId === 'anonymous';
@@ -65,8 +73,9 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer ref={navRef}>
-      <Stack.Navigator initialRouteName={isAnonymous ? 'Landing' : 'Dashboard'}>
+    <ToastProvider>
+      <NavigationContainer ref={navRef}>
+        <Stack.Navigator initialRouteName={isAnonymous ? 'Landing' : 'Dashboard'}>
         {isAnonymous ? (
           <>
             <Stack.Screen name="Landing" options={{ headerShown: false }}>
@@ -132,7 +141,13 @@ export default function App() {
             <ProfileScreen {...props} />
           )}
         </Stack.Screen>
+        <Stack.Screen name="Notifications" options={{ headerTitle: 'Notificações' }}>
+          {(props) => (
+            <NotificationsScreen {...props} />
+          )}
+        </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
+    </ToastProvider>
   );
 }

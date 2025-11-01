@@ -9,6 +9,7 @@ import { colors } from '../theme/colors';
 import ShareSheet from '../components/ShareSheet';
 import { typography } from '../theme/typography';
 import { spacing } from '../theme/spacing';
+import { useToast } from '../components/Toast';
 
 const primaryColor = colors.brandPrimary;
 const dangerColor = colors.danger;
@@ -56,6 +57,7 @@ function formatNumberByType(type: DocType, value?: string) {
 }
 
 export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId }: { document: DocumentItem; onDeleted: () => void; onEdit?: () => void; userId: string; }) {
+  const { showToast } = useToast();
   if (!document) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, backgroundColor: bgColor }}>
@@ -79,6 +81,7 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
     try {
       await syncDocumentDelete(document.id, userId);
     } catch {}
+    showToast('Documento excluído', { type: 'success' });
     onDeleted();
   }
 
@@ -270,6 +273,15 @@ async function exportAsPDF(title: string, frontUri?: string, backUri?: string) {
       doc.addImage(reader, 'JPEG', 10, y, 180, 0);
     } catch {}
   }
+
+  // Marca d'água
+  try {
+    const pageWidth = (doc as any).internal.pageSize.getWidth();
+    const pageHeight = (doc as any).internal.pageSize.getHeight();
+    doc.setFontSize(28);
+    doc.setTextColor(180, 180, 180);
+    doc.text('EVDocs - Uso exclusivo do titular', pageWidth / 2, pageHeight / 2, { angle: -30, align: 'center' } as any);
+  } catch {}
 
   doc.save(`${title || 'documento'}.pdf`);
 }
