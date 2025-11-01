@@ -168,15 +168,21 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
             })
           );
           const byKey = new Map<string, DocumentItem>();
+          const safeId = (v: any) => {
+            const MAX = 2147483647;
+            if (typeof v === 'number') return (v > 0 && v <= MAX) ? v : (Math.abs(v) % MAX) || 1;
+            const s = String(v || '');
+            let h = 2166136261;
+            for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h += (h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24); }
+            return (Math.abs(h) % MAX) || 1;
+          };
           for (const loc of items) {
-            const k = keyForItem(loc);
+            const k = String(safeId((loc as any).appId ?? loc.id));
             byKey.set(k, loc);
           }
           for (const rem of mapped) {
             const matchLoc = items.find(loc => {
-              const appNum = typeof (loc as any).appId === 'string' ? parseInt((loc as any).appId, 10)
-                : (typeof (loc as any).appId === 'number' ? (loc as any).appId : NaN);
-              const keyNum = Number.isFinite(appNum) ? appNum : (typeof loc.id === 'number' ? loc.id : NaN);
+              const keyNum = safeId((loc as any).appId ?? loc.id);
               return (
                 String(keyNum) === String(rem.appId) &&
                 (
@@ -186,7 +192,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
                 )
               );
             });
-            const targetKey = matchLoc ? keyForItem(matchLoc) : keyForItem(rem);
+            const targetKey = matchLoc ? String(safeId((matchLoc as any).appId ?? matchLoc.id)) : String(rem.appId);
             const prev = byKey.get(targetKey);
             const mergedItem: DocumentItem = {
               ...(prev || {}),

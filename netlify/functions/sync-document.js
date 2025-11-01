@@ -5,6 +5,22 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function toSafeAppId(input) {
+  const MAX = 2147483647;
+  if (typeof input === 'number') {
+    if (Number.isFinite(input) && input > 0 && input <= MAX) return input;
+    input = String(input);
+  }
+  const s = String(input || '');
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
+  const res = Math.abs(h) % MAX;
+  return res || 1;
+}
+
 exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders() };
@@ -18,7 +34,7 @@ exports.handler = async function(event) {
     }
 
     if (event.httpMethod === 'POST') {
-      const appId = typeof id === 'number' ? id : parseInt(String(id), 10);
+      const appId = toSafeAppId(id);
       if (!Number.isFinite(appId)) return json({ error: 'Invalid app_id' }, 400);
 
       // Upsert manual por (app_id, user_id) para evitar sobrescrita por constraint incorreta
@@ -55,7 +71,7 @@ exports.handler = async function(event) {
     }
 
     if (event.httpMethod === 'DELETE') {
-      const appId = typeof id === 'number' ? id : parseInt(String(id), 10);
+      const appId = toSafeAppId(id);
       if (!Number.isFinite(appId)) return json({ error: 'Invalid app_id' }, 400);
       const { data, error } = await supabase
         .from('documents')

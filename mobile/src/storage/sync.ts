@@ -3,6 +3,22 @@ import type { DocumentItem } from '../types';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
+function toSafeAppId(input: string | number): number {
+  const MAX = 2147483647;
+  if (typeof input === 'number') {
+    if (Number.isFinite(input) && input > 0 && input <= MAX) return input;
+    input = String(input);
+  }
+  const s = String(input || '');
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
+  const res = Math.abs(h) % MAX;
+  return res || 1;
+}
+
 async function uploadImage(path: string, userId: string): Promise<string> {
   if (!path) return '';
   const fileName = `${userId}/${Date.now()}_${path.split('/').pop()}`;
@@ -18,7 +34,6 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
     const frontPath = item.frontImageUri ? await uploadImage(item.frontImageUri, userId).catch((e) => { console.error('[sync] front upload failed', e); return ''; }) : '';
     const backPath = item.backImageUri ? await uploadImage(item.backImageUri, userId).catch((e) => { console.error('[sync] back upload failed', e); return ''; }) : '';
 
-    // Use a globally unique ID for remote sync to avoid collisions across devices
     // Evita tentar sincronizar com userId inválido
     if (!userId || userId === 'anonymous') {
       console.log('[sync] skip: no userId (login required)');
@@ -30,16 +45,8 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
       return;
     }
 
-    // Determina ID numérico para app_id (prioriza appId estável; fallback id local)
-    const idForSync = (typeof (item as any).appId === 'number')
-      ? (item as any).appId
-      : (typeof (item as any).appId === 'string'
-          ? parseInt((item as any).appId, 10)
-          : (typeof item.id === 'number' ? item.id : NaN));
-    if (!Number.isFinite(idForSync)) {
-      console.log('[sync] skip: invalid appId/id for upsert', { appId: (item as any).appId, id: item.id });
-      return;
-    }
+    // Determina ID seguro para app_id (int4), estável a partir de appId/id
+    const idForSync = toSafeAppId((item as any).appId ?? (item.id as any) ?? '');
  
     const url = (API_BASE ? `${API_BASE}/.netlify/functions/sync-document` : '/.netlify/functions/sync-document');
     console.log('[sync] POST', url, { id: idForSync, userId, name: item.name, number: item.number });
@@ -77,11 +84,7 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
 
 export async function syncDocumentDelete(appIdOrLocalId: string | number, userId: string) {
   try {
-    const idNum = typeof appIdOrLocalId === 'number' ? appIdOrLocalId : parseInt(String(appIdOrLocalId), 10);
-    if (!Number.isFinite(idNum)) {
-      console.log('[sync] delete skip: invalid id', appIdOrLocalId);
-      return;
-    }
+    const idNum = toSafeAppId(appIdOrLocalId);
     const url = (API_BASE ? `${API_BASE}/.netlify/functions/sync-document` : '/.netlify/functions/sync-document');
     const resp = await fetch(url, {
       method: 'DELETE',
