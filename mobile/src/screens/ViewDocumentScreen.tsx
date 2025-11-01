@@ -147,6 +147,19 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
             <Text style={{ marginLeft:8, color:'#374151' }}>Bandeira: <Text style={{ fontWeight:'700', color:'#111827' }}>{document.cardBrand}</Text></Text>
           </View>
         )}
+        {type === 'Cartões' && (document.cardSubtype || document.bank || document.expiryDate) ? (
+          <View style={{ marginTop:8 }}>
+            {document.cardSubtype ? (
+              <Text style={{ color:'#374151' }}>Tipo: <Text style={{ fontWeight:'700', color:'#111827' }}>{document.cardSubtype}</Text></Text>
+            ) : null}
+            {document.bank ? (
+              <Text style={{ color:'#374151', marginTop:4 }}>Banco: <Text style={{ fontWeight:'700', color:'#111827' }}>{document.bank}</Text></Text>
+            ) : null}
+            {document.expiryDate ? (
+              <Text style={{ color:'#374151', marginTop:4 }}>Validade: <Text style={{ fontWeight:'700', color:'#111827' }}>{document.expiryDate}</Text></Text>
+            ) : null}
+          </View>
+        ) : null}
         {type === 'Título de Eleitor' && (document.electorZone || document.electorSection) ? (
           <View style={{ marginTop: 8 }}>
             <Text style={{ fontSize: 13, color:'#6B7280' }}>Zona • Seção</Text>

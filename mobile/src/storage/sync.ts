@@ -68,6 +68,10 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
         issuingAuthority: (item as any).issuingAuthority,
         electorZone: (item as any).electorZone,
         electorSection: (item as any).electorSection,
+        cardSubtype: (item as any).cardSubtype,
+        bank: (item as any).bank,
+        cvc: (item as any).cvc,
+        cardBrand: (item as any).cardBrand,
         updatedAt: (item as any).updatedAt || Date.now(),
       }),
     });

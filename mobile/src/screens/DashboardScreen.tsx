@@ -129,7 +129,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
       if (userId && userId !== 'anonymous') {
         const { data: remote, error } = await supabase
           .from('documents')
-          .select('app_id,name,number,front_path,back_path,updated_at')
+          .select('app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority,elector_zone,elector_section,card_subtype,bank,cvc,card_brand')
           .eq('user_id', userId)
           .order('updated_at', { ascending: false });
 
@@ -162,6 +162,10 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
                 issuingAuthority: d.issuing_authority || undefined,
                 electorZone: d.elector_zone || undefined,
                 electorSection: d.elector_section || undefined,
+                cardSubtype: d.card_subtype || undefined,
+                bank: d.bank || undefined,
+                cvc: d.cvc || undefined,
+                cardBrand: d.card_brand || undefined,
                 synced: 1,
                 updatedAt: d.updated_at ? new Date(d.updated_at).getTime() : undefined,
               } as DocumentItem;
@@ -188,7 +192,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
                 (
                   (loc.number && rem.number && loc.number === rem.number) ||
                   (loc.name && rem.name && loc.name === rem.name) ||
-                  (loc.cardType && rem.cardType && loc.cardType === rem.cardType)
+                  (loc.cardSubtype && rem.cardSubtype && loc.cardSubtype === rem.cardSubtype)
                 )
               );
             });
@@ -320,8 +324,9 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
     const hasId = typeof item.id === 'number';
     const itemKey = keyForItem(item);
     const isOpen = menuFor === itemKey;
+    const accentBg = item.type === 'Cartões' ? '#FEF2F2' : item.type === 'RG' ? '#EFF6FF' : item.type === 'CNH' ? '#ECFDF5' : '#fff';
     return (
-      <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation: isOpen ? 12 : 2, zIndex: isOpen ? 1000 : 0, overflow:'visible' }}>
+      <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor: accentBg, borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation: isOpen ? 12 : 2, zIndex: isOpen ? 1000 : 0, overflow:'visible' }}>
         <View style={{ flexDirection:'row', alignItems:'center' }}>
           <View style={{ width:36, height:36, borderRadius:8, backgroundColor:'#F9FAFB', alignItems:'center', justifyContent:'center', marginRight:10 }}>
             {item.type === 'Cartões' && !!item.cardBrand ? (
@@ -339,6 +344,40 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
           </TouchableOpacity>
         </View>
         <Text style={{ fontSize:12, color:'#374151', marginTop:10 }}>{item.number || '—'}</Text>
+
+        <View style={{ flexDirection:'row', flexWrap:'wrap', marginTop:8 }}>
+          {item.cardSubtype ? (
+            <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#EEF2FF', borderWidth:1, borderColor:'#CBD5E1', marginRight:6, marginBottom:6 }}>
+              <Text style={{ fontSize:11, fontWeight:'700', color:'#334155' }}>{item.cardSubtype}</Text>
+            </View>
+          ) : null}
+          {item.cardBrand ? (
+            <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#F5F3FF', borderWidth:1, borderColor:'#DDD6FE', marginRight:6, marginBottom:6, flexDirection:'row', alignItems:'center' }}>
+              <FontAwesome name={brandIconName(item.cardBrand) as any} size={14} color={'#4B5563'} />
+              <Text style={{ fontSize:11, fontWeight:'700', color:'#4B5563', marginLeft:6 }}>{item.cardBrand}</Text>
+            </View>
+          ) : null}
+          {item.bank ? (
+            <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#ECFDF5', borderWidth:1, borderColor:'#A7F3D0', marginRight:6, marginBottom:6 }}>
+              <Text style={{ fontSize:11, fontWeight:'700', color:'#065F46' }}>{item.bank}</Text>
+            </View>
+          ) : null}
+          {item.expiryDate ? (
+            <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#FEF3C7', borderWidth:1, borderColor:'#FDE68A', marginRight:6, marginBottom:6 }}>
+              <Text style={{ fontSize:11, fontWeight:'700', color:'#92400E' }}>Venc.: {item.expiryDate}</Text>
+            </View>
+          ) : null}
+          {(item.issueDate && (item.type === 'RG' || item.type === 'CNH')) ? (
+            <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#F3F4F6', borderWidth:1, borderColor:'#E5E7EB', marginRight:6, marginBottom:6 }}>
+              <Text style={{ fontSize:11, fontWeight:'700', color:'#374151' }}>Exp.: {item.issueDate}</Text>
+            </View>
+          ) : null}
+          {(item.electorZone || item.electorSection) && item.type === 'Título de Eleitor' ? (
+            <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#E0F2FE', borderWidth:1, borderColor:'#BAE6FD', marginRight:6, marginBottom:6 }}>
+              <Text style={{ fontSize:11, fontWeight:'700', color:'#0C4A6E' }}>Zona {item.electorZone || '—'} • Seção {item.electorSection || '—'}</Text>
+            </View>
+          ) : null}
+        </View>
 
         {isOpen && (
             <Pressable onStartShouldSetResponder={() => true} style={{ position:'absolute', right:14, top:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:10, shadowColor:'#000', shadowOpacity:0.08, shadowRadius:14, elevation:12, zIndex: 2000 }}>

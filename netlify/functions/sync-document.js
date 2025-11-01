@@ -28,6 +28,20 @@ exports.handler = async function(event) {
   try {
     const body = event.body ? JSON.parse(event.body) : {};
     const { id, name, number, frontPath, backPath, userId } = body;
+    const {
+      type,
+      issueDate,
+      expiryDate,
+      issuingState,
+      issuingCity,
+      issuingAuthority,
+      electorZone,
+      electorSection,
+      cardSubtype,
+      bank,
+      cvc,
+      cardBrand,
+    } = body;
 
     if (!userId || typeof userId !== 'string') {
       return json({ error: 'Missing or invalid userId' }, 400);
@@ -51,6 +65,18 @@ exports.handler = async function(event) {
         number,
         front_path: frontPath || null,
         back_path: backPath || null,
+        type: type || null,
+        issue_date: issueDate || null,
+        expiry_date: expiryDate || null,
+        issuing_state: issuingState || null,
+        issuing_city: issuingCity || null,
+        issuing_authority: issuingAuthority || null,
+        elector_zone: electorZone || null,
+        elector_section: electorSection || null,
+        card_subtype: cardSubtype || null,
+        bank: bank || null,
+        cvc: cvc || null,
+        card_brand: cardBrand || null,
         updated_at: new Date().toISOString(),
       };
 
