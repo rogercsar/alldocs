@@ -15,13 +15,13 @@ async function uploadImage(path: string, userId: string): Promise<string> {
 
 export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string) {
   try {
-    const frontPath = item.frontImageUri ? await uploadImage(item.frontImageUri, userId) : null;
-    const backPath = item.backImageUri ? await uploadImage(item.backImageUri, userId) : null;
+    const frontPath = item.frontImageUri ? await uploadImage(item.frontImageUri, userId).catch((e) => { console.error('[sync] front upload failed', e); return ''; }) : '';
+    const backPath = item.backImageUri ? await uploadImage(item.backImageUri, userId).catch((e) => { console.error('[sync] back upload failed', e); return ''; }) : '';
 
     // Use a globally unique ID for remote sync to avoid collisions across devices
     const idForSync = (item as any).appId || String(item.id);
 
-    const url = `${API_BASE}/.netlify/functions/sync-document`;
+    const url = (API_BASE ? `${API_BASE}/.netlify/functions/sync-document` : '/.netlify/functions/sync-document');
     console.log('[sync] POST', url, { id: idForSync, userId, name: item.name, number: item.number });
     const resp = await fetch(url, {
       method: 'POST',
@@ -31,8 +31,8 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
         userId,
         name: item.name,
         number: item.number,
-        frontPath,
-        backPath,
+        frontPath: frontPath || null,
+        backPath: backPath || null,
         type: (item as any).type,
         issueDate: (item as any).issueDate,
         expiryDate: (item as any).expiryDate,
@@ -58,7 +58,8 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
 export async function syncDocumentDelete(appIdOrLocalId: string | number, userId: string) {
   try {
     const id = typeof appIdOrLocalId === 'string' ? appIdOrLocalId : String(appIdOrLocalId);
-    const resp = await fetch('/.netlify/functions/sync-document', {
+    const url = (API_BASE ? `${API_BASE}/.netlify/functions/sync-document` : '/.netlify/functions/sync-document');
+    const resp = await fetch(url, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, userId }),
