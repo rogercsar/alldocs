@@ -21,7 +21,9 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
     // Use a globally unique ID for remote sync to avoid collisions across devices
     const idForSync = (item as any).appId || String(item.id);
 
-    const resp = await fetch('/.netlify/functions/sync-document', {
+    const url = `${API_BASE}/.netlify/functions/sync-document`;
+    console.log('[sync] POST', url, { id: idForSync, userId, name: item.name, number: item.number });
+    const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -43,7 +45,10 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
       }),
     });
     if (!resp.ok) {
-      console.error('syncDocumentAddOrUpdate failed', await resp.text());
+      const txt = await resp.text().catch(() => '');
+      console.error('syncDocumentAddOrUpdate failed', resp.status, txt);
+    } else {
+      console.log('[sync] OK', resp.status);
     }
   } catch (e) {
     console.error('syncDocumentAddOrUpdate error', e);
