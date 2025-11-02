@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, Linking, useWindowDimensions, Animated } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, Linking, useWindowDimensions, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import TestimonialsCarousel from '../components/TestimonialsCarousel';
@@ -33,8 +33,8 @@ export default function LandingScreen({ onLogin, onViewPlans }: Props) {
   const scale = useRef(new Animated.Value(0.96)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fade, { toValue: 1, duration: 450, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true })
+      Animated.timing(fade, { toValue: 1, duration: 450, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: Platform.OS !== 'web' })
     ]).start();
   }, [fade, scale]);
 

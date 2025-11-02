@@ -69,6 +69,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const typeMenuScale = useRef(new Animated.Value(0.95)).current;
   const typeMenuOpacity = useRef(new Animated.Value(0)).current;
+const allowsNativeDriver = Platform.OS !== 'web';
 
   // Busca e filtros
   const [query, setQuery] = useState('');
@@ -142,12 +143,11 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
               order: 'updated_at.desc',
             });
             const restUrl = `${SUPABASE_URL}/rest/v1/documents?${qs.toString()}&user_id=eq.${userId}&apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}`;
-            const r = await fetch(restUrl, {
-              headers: {
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-              },
-            });
+            const { data: sessionData } = await supabase.auth.getSession();
+            const accessToken = (sessionData as any)?.session?.access_token as string | undefined;
+            const headers: any = { apikey: SUPABASE_ANON_KEY };
+            if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+            const r = await fetch(restUrl, { headers });
             if (r.ok) {
               rows = await r.json();
             } else {
@@ -195,6 +195,14 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
               } as DocumentItem;
             })
           );
+          const safeId = (v: any) => {
+            const MAX = 2147483647;
+            if (typeof v === 'number') return (v > 0 && v <= MAX) ? v : (Math.abs(v) % MAX) || 1;
+            const s = String(v || '');
+            let h = 2166136261;
+            for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h += (h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24); }
+            return (Math.abs(h) % MAX) || 1;
+          };
           const byKey = new Map<string, DocumentItem>();
           for (const loc of items) {
             const k = String(safeId((loc as any).appId ?? loc.id));
@@ -262,8 +270,8 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
           menuScale.setValue(0.95);
           menuOpacity.setValue(0);
           Animated.parallel([
-            Animated.timing(menuScale, { toValue: 1, duration: 140, useNativeDriver: true }),
-            Animated.timing(menuOpacity, { toValue: 1, duration: 140, useNativeDriver: true }),
+            Animated.timing(menuScale, { toValue: 1, duration: 140, useNativeDriver: allowsNativeDriver }),
+            Animated.timing(menuOpacity, { toValue: 1, duration: 140, useNativeDriver: allowsNativeDriver }),
           ]).start();
         }
       }, [headerMenuOpen]);
@@ -486,13 +494,13 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
       useEffect(() => {
         if (isTypeMenuOpen) {
           Animated.parallel([
-            Animated.timing(typeMenuScale, { toValue: 1, duration: 120, useNativeDriver: true }),
-            Animated.timing(typeMenuOpacity, { toValue: 1, duration: 120, useNativeDriver: true }),
+            Animated.timing(typeMenuScale, { toValue: 1, duration: 120, useNativeDriver: allowsNativeDriver }),
+            Animated.timing(typeMenuOpacity, { toValue: 1, duration: 120, useNativeDriver: allowsNativeDriver }),
           ]).start();
         } else {
           Animated.parallel([
-            Animated.timing(typeMenuScale, { toValue: 0.95, duration: 100, useNativeDriver: true }),
-            Animated.timing(typeMenuOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
+            Animated.timing(typeMenuScale, { toValue: 0.95, duration: 100, useNativeDriver: allowsNativeDriver }),
+            Animated.timing(typeMenuOpacity, { toValue: 0, duration: 100, useNativeDriver: allowsNativeDriver }),
           ]).start();
         }
       }, [isTypeMenuOpen]);

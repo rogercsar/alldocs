@@ -48,7 +48,6 @@ export const supabase: any = (SUPABASE_URL && SUPABASE_ANON_KEY)
       global: {
         headers: {
           apikey: SUPABASE_ANON_KEY as string,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
       },
     })
