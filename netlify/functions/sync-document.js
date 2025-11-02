@@ -66,11 +66,19 @@ exports.handler = async function(event) {
         const { data: columnsData } = await supabase
           .from('information_schema.columns')
           .select('column_name')
+          .eq('table_schema', 'public')
           .eq('table_name', 'documents');
         if (Array.isArray(columnsData)) {
           columnSet = new Set(columnsData.map((c) => c.column_name));
         }
-      } catch {}
+      } catch (e) {
+        // Se falhar a introspecção, usa um conjunto conhecido de colunas básicas
+        console.warn('Falha na introspecção de colunas:', e.message);
+        columnSet = new Set([
+          'id', 'app_id', 'user_id', 'name', 'number', 
+          'front_path', 'back_path', 'created_at', 'updated_at'
+        ]);
+      }
 
       const basePayload = {
         name,
@@ -82,8 +90,11 @@ exports.handler = async function(event) {
 
       const payload = { ...basePayload };
       const addIfPresent = (col, val) => {
-        if (!columnSet) return; // se não conseguir introspecção, fica no base
-        if (columnSet.has(col)) payload[col] = val ?? null;
+        if (!columnSet || !columnSet.has(col)) {
+          console.log(`Campo '${col}' não existe na tabela documents, ignorando.`);
+          return;
+        }
+        payload[col] = val ?? null;
       };
       addIfPresent('type', type);
       addIfPresent('issue_date', issueDate);
@@ -98,6 +109,9 @@ exports.handler = async function(event) {
       addIfPresent('cvc', cvc);
       addIfPresent('card_brand', cardBrand);
 
+      console.log(`Payload final para sync:`, JSON.stringify(payload, null, 2));
+      console.log(`Colunas disponíveis:`, Array.from(columnSet || []).sort());
+
       if (Array.isArray(existing) && existing.length > 0) {
         const rowId = existing[0].id;
         let { error: updErr } = await supabase
@@ -105,6 +119,8 @@ exports.handler = async function(event) {
           .update(payload)
           .eq('id', rowId);
         if (updErr) {
+          console.warn(`Erro no update com payload completo:`, updErr.message);
+          console.log(`Tentando com payload mínimo:`, JSON.stringify(basePayload, null, 2));
           // Qualquer erro: tenta payload mínimo
           ({ error: updErr } = await supabase
             .from('documents')
@@ -117,6 +133,8 @@ exports.handler = async function(event) {
           .from('documents')
           .insert({ app_id: appId, user_id: userId, ...payload });
         if (insErr) {
+          console.warn(`Erro no insert com payload completo:`, insErr.message);
+          console.log(`Tentando com payload mínimo:`, JSON.stringify({ app_id: appId, user_id: userId, ...basePayload }, null, 2));
           // Qualquer erro: tenta payload mínimo
           ({ error: insErr } = await supabase
             .from('documents')

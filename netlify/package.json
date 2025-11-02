@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@supabase/supabase-js": "^2.76.1",
+    "dotenv": "^17.2.3",
     "mercadopago": "^2.9.0",
     "node-fetch": "^2.7.0"
   }
