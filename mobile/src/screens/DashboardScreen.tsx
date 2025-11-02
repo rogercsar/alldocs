@@ -130,7 +130,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
       if (userId && userId !== 'anonymous') {
         const { data: remote, error } = await supabase
           .from('documents')
-          .select('app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority,elector_zone,elector_section,card_subtype,bank,cvc,card_brand')
+          .select('app_id,name,number,front_path,back_path,updated_at')
           .eq('user_id', userId)
           .order('updated_at', { ascending: false });
 
@@ -139,10 +139,10 @@ const allowsNativeDriver = Platform.OS !== 'web';
           // Fallback robusto: chamada direta PostgREST com apikey na URL
           if (SUPABASE_URL && SUPABASE_ANON_KEY) {
             const qs = new URLSearchParams({
-              select: 'app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority,elector_zone,elector_section,card_subtype,bank,cvc,card_brand',
+              select: 'app_id,name,number,front_path,back_path,updated_at',
               order: 'updated_at.desc',
             });
-            const restUrl = `${SUPABASE_URL}/rest/v1/documents?${qs.toString()}&user_id=eq.${userId}&apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}`;
+            const restUrl = `${SUPABASE_URL}/rest/v1/documents?${qs.toString()}&user_id=eq.${encodeURIComponent(userId)}&apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}`;
             const { data: sessionData } = await supabase.auth.getSession();
             const accessToken = (sessionData as any)?.session?.access_token as string | undefined;
             const headers: any = { apikey: SUPABASE_ANON_KEY };

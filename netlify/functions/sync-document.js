@@ -60,11 +60,15 @@ exports.handler = async function(event) {
         .limit(1);
       if (selErr) throw selErr;
 
-      const payload = {
+      const basePayload = {
         name,
         number,
         front_path: frontPath || null,
         back_path: backPath || null,
+        updated_at: new Date().toISOString(),
+      };
+      const payload = {
+        ...basePayload,
         type: type || null,
         issue_date: issueDate || null,
         expiry_date: expiryDate || null,
@@ -77,20 +81,30 @@ exports.handler = async function(event) {
         bank: bank || null,
         cvc: cvc || null,
         card_brand: cardBrand || null,
-        updated_at: new Date().toISOString(),
       };
 
       if (Array.isArray(existing) && existing.length > 0) {
         const rowId = existing[0].id;
-        const { error: updErr } = await supabase
+        let { error: updErr } = await supabase
           .from('documents')
           .update(payload)
           .eq('id', rowId);
+        if (updErr && (updErr.code === '42703' || /column .* does not exist/i.test(updErr.message || ''))) {
+          ({ error: updErr } = await supabase
+            .from('documents')
+            .update(basePayload)
+            .eq('id', rowId));
+        }
         if (updErr) throw updErr;
       } else {
-        const { error: insErr } = await supabase
+        let { error: insErr } = await supabase
           .from('documents')
           .insert({ app_id: appId, user_id: userId, ...payload });
+        if (insErr && (insErr.code === '42703' || /column .* does not exist/i.test(insErr.message || ''))) {
+          ({ error: insErr } = await supabase
+            .from('documents')
+            .insert({ app_id: appId, user_id: userId, ...basePayload }));
+        }
         if (insErr) throw insErr;
       }
       return json({ ok: true });
