@@ -60,6 +60,18 @@ exports.handler = async function(event) {
         .limit(1);
       if (selErr) throw selErr;
 
+      // Descobre colunas disponíveis para montar payload compatível
+      let columnSet = null;
+      try {
+        const { data: columnsData } = await supabase
+          .from('information_schema.columns')
+          .select('column_name')
+          .eq('table_name', 'documents');
+        if (Array.isArray(columnsData)) {
+          columnSet = new Set(columnsData.map((c) => c.column_name));
+        }
+      } catch {}
+
       const basePayload = {
         name,
         number,
@@ -67,21 +79,24 @@ exports.handler = async function(event) {
         back_path: backPath || null,
         updated_at: new Date().toISOString(),
       };
-      const payload = {
-        ...basePayload,
-        type: type || null,
-        issue_date: issueDate || null,
-        expiry_date: expiryDate || null,
-        issuing_state: issuingState || null,
-        issuing_city: issuingCity || null,
-        issuing_authority: issuingAuthority || null,
-        elector_zone: electorZone || null,
-        elector_section: electorSection || null,
-        card_subtype: cardSubtype || null,
-        bank: bank || null,
-        cvc: cvc || null,
-        card_brand: cardBrand || null,
+
+      const payload = { ...basePayload };
+      const addIfPresent = (col, val) => {
+        if (!columnSet) return; // se não conseguir introspecção, fica no base
+        if (columnSet.has(col)) payload[col] = val ?? null;
       };
+      addIfPresent('type', type);
+      addIfPresent('issue_date', issueDate);
+      addIfPresent('expiry_date', expiryDate);
+      addIfPresent('issuing_state', issuingState);
+      addIfPresent('issuing_city', issuingCity);
+      addIfPresent('issuing_authority', issuingAuthority);
+      addIfPresent('elector_zone', electorZone);
+      addIfPresent('elector_section', electorSection);
+      addIfPresent('card_subtype', cardSubtype);
+      addIfPresent('bank', bank);
+      addIfPresent('cvc', cvc);
+      addIfPresent('card_brand', cardBrand);
 
       if (Array.isArray(existing) && existing.length > 0) {
         const rowId = existing[0].id;
@@ -89,7 +104,8 @@ exports.handler = async function(event) {
           .from('documents')
           .update(payload)
           .eq('id', rowId);
-        if (updErr && (updErr.code === '42703' || /column .* does not exist/i.test(updErr.message || ''))) {
+        if (updErr) {
+          // Qualquer erro: tenta payload mínimo
           ({ error: updErr } = await supabase
             .from('documents')
             .update(basePayload)
@@ -100,7 +116,8 @@ exports.handler = async function(event) {
         let { error: insErr } = await supabase
           .from('documents')
           .insert({ app_id: appId, user_id: userId, ...payload });
-        if (insErr && (insErr.code === '42703' || /column .* does not exist/i.test(insErr.message || ''))) {
+        if (insErr) {
+          // Qualquer erro: tenta payload mínimo
           ({ error: insErr } = await supabase
             .from('documents')
             .insert({ app_id: appId, user_id: userId, ...basePayload }));
