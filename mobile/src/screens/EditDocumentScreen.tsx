@@ -156,7 +156,7 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
   }
 
   function shouldShowMetadata(t: typeof DOC_TYPES[number]) {
-    return t === 'RG' || t === 'CNH';
+    return t === 'RG' || t === 'CNH' || t === 'Documento do veículo';
   }
 
   async function save() {
@@ -169,9 +169,14 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
       if (isExpired(expiryDate)) { setSaving(false); Alert.alert('Cartão vencido', 'A validade informada está no passado'); return; }
     }
 
-    const baseMeta = shouldShowMetadata(docType)
-      ? { issueDate: issueDate || '', expiryDate: expiryDate || '', issuingState: issuingState || '', issuingCity: issuingCity || '', issuingAuthority: issuingAuthority || '' }
-      : { issueDate: '', expiryDate: docType === 'Cartões' ? (expiryDate || '') : '', issuingState: '', issuingCity: '', issuingAuthority: '' };
+    let baseMeta;
+    if (docType === 'RG' || docType === 'CNH') {
+      baseMeta = { issueDate: issueDate || '', expiryDate: expiryDate || '', issuingState: issuingState || '', issuingCity: issuingCity || '', issuingAuthority: issuingAuthority || '' };
+    } else if (docType === 'Documento do veículo') {
+      baseMeta = { issueDate: issueDate || '', expiryDate: expiryDate || '', issuingState: '', issuingCity: '', issuingAuthority: '' };
+    } else {
+      baseMeta = { issueDate: '', expiryDate: docType === 'Cartões' ? (expiryDate || '') : '', issuingState: '', issuingCity: '', issuingAuthority: '' };
+    }
 
     const eleitorMeta = docType === 'Título de Eleitor'
       ? { electorZone: electorZone || '', electorSection: electorSection || '' }
@@ -302,17 +307,21 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
                 <AdaptiveDateField label="Data de Expedição" value={issueDate} onChange={setIssueDate} />
                 <AdaptiveDateField label="Data de Vencimento" value={expiryDate} onChange={setExpiryDate} />
               </View>
-              <View style={{ flexDirection:'row', gap:8, marginTop: 8 }}>
-                <View style={{ flex:1 }}>
-                  <SelectField label="UF" value={issuingState} placeholder="Selecione a UF" options={UF_OPTIONS} onChange={(v) => setIssuingState(v)} />
-                </View>
-                <View style={{ flex:2 }}>
-                  <SelectField label="Cidade" value={issuingCity} placeholder={issuingState ? 'Selecione a cidade' : 'Selecione a UF primeiro'} options={cityOptions} onChange={setIssuingCity} disabled={!issuingState} loading={loadingCities} />
-                </View>
-              </View>
-              <View style={{ marginTop: 8 }}>
-                <SelectField label="Órgão Emissor" value={issuingAuthority} placeholder={issuingCity ? 'Selecione o órgão' : 'Selecione a cidade primeiro'} options={authorityOptions} onChange={setIssuingAuthority} disabled={!issuingCity} />
-              </View>
+              {(docType === 'RG' || docType === 'CNH') && (
+                <>
+                  <View style={{ flexDirection:'row', gap:8, marginTop: 8 }}>
+                    <View style={{ flex:1 }}>
+                      <SelectField label="UF" value={issuingState} placeholder="Selecione a UF" options={UF_OPTIONS} onChange={(v) => setIssuingState(v)} />
+                    </View>
+                    <View style={{ flex:2 }}>
+                      <SelectField label="Cidade" value={issuingCity} placeholder={issuingState ? 'Selecione a cidade' : 'Selecione a UF primeiro'} options={cityOptions} onChange={setIssuingCity} disabled={!issuingState} loading={loadingCities} />
+                    </View>
+                  </View>
+                  <View style={{ marginTop: 8 }}>
+                    <SelectField label="Órgão Emissor" value={issuingAuthority} placeholder={issuingCity ? 'Selecione o órgão' : 'Selecione a cidade primeiro'} options={authorityOptions} onChange={setIssuingAuthority} disabled={!issuingCity} />
+                  </View>
+                </>
+              )}
             </View>
           )}
 

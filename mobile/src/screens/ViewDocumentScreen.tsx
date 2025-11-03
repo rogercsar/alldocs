@@ -170,7 +170,7 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
         ) : null}
       </View>
 
-      {(type === 'RG' || type === 'CNH') && (
+      {(type === 'RG' || type === 'CNH' || type === 'Documento do veículo') && (
         <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, marginBottom: 16 }}>
           <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8, fontWeight: '700' }}>Informações do Documento</Text>
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
@@ -183,20 +183,24 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.expiryDate || '—'}</Text>
             </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, color: '#6B7280' }}>UF</Text>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingState || '—'}</Text>
-            </View>
-            <View style={{ flex: 2 }}>
-              <Text style={{ fontSize: 13, color: '#6B7280' }}>Cidade</Text>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingCity || '—'}</Text>
-            </View>
-          </View>
-          <View>
-            <Text style={{ fontSize: 13, color: '#6B7280' }}>Órgão Emissor</Text>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingAuthority || '—'}</Text>
-          </View>
+          {(type === 'RG' || type === 'CNH') && (
+            <>
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, color: '#6B7280' }}>UF</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingState || '—'}</Text>
+                </View>
+                <View style={{ flex: 2 }}>
+                  <Text style={{ fontSize: 13, color: '#6B7280' }}>Cidade</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingCity || '—'}</Text>
+                </View>
+              </View>
+              <View>
+                <Text style={{ fontSize: 13, color: '#6B7280' }}>Órgão Emissor</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingAuthority || '—'}</Text>
+              </View>
+            </>
+          )}
         </View>
       )}
 
