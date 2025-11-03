@@ -69,6 +69,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const [limitReached, setLimitReached] = useState(false);
   const [deviceCount, setDeviceCount] = useState<number | null>(null);
   const [deviceLimit, setDeviceLimit] = useState<number | null>(null);
+  const [isPremiumDevices, setIsPremiumDevices] = useState<boolean>(false);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
@@ -552,6 +553,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
             if (!cancelled) {
               setDeviceCount(j?.count ?? null);
               setDeviceLimit(j?.limit ?? null);
+              setIsPremiumDevices(!!j?.is_premium);
             }
           } catch {}
         })();
@@ -560,7 +562,11 @@ const allowsNativeDriver = Platform.OS !== 'web';
 
       const deviceLimitReached = deviceCount !== null && deviceLimit !== null && deviceCount >= deviceLimit;
       const notifMessages: string[] = [];
-      if (deviceLimitReached) notifMessages.push(`Limite de dispositivos atingido (${deviceCount}/${deviceLimit}). Faça upgrade para adicionar mais.`);
+      if (deviceLimitReached) {
+        notifMessages.push(isPremiumDevices
+          ? `Limite premium de dispositivos atingido (${deviceCount}/${deviceLimit}).`
+          : `Limite de dispositivos atingido (${deviceCount}/${deviceLimit}). Faça upgrade para adicionar mais.`);
+      }
       if (limitReached) notifMessages.push('Limite gratuito de 4 documentos atingido. Desbloqueie Premium.');
 
       // Alertas de vencimento de documentos (util compartilhado)

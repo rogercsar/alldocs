@@ -3,6 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const FREE_DEVICE_LIMIT = parseInt(process.env.FREE_DEVICE_LIMIT || '2', 10);
+const PREMIUM_DEVICE_LIMIT = parseInt(process.env.PREMIUM_DEVICE_LIMIT || '0', 10); // 0 = ilimitado
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Tabela esperada no Supabase:
@@ -41,7 +42,23 @@ exports.handler = async function(event) {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId);
       if (error) throw error;
-      return json({ count: count || 0, limit: FREE_DEVICE_LIMIT }, 200);
+
+      // Determina se é premium para ajustar o limite
+      let isPremium = false;
+      try {
+        const { data: prof, error: profErr } = await supabase
+          .from('user_profiles')
+          .select('is_premium')
+          .eq('id', userId)
+          .limit(1);
+        if (profErr) throw profErr;
+        const row = Array.isArray(prof) ? prof[0] : prof;
+        isPremium = !!row?.is_premium;
+      } catch {}
+
+      // Premium: usa PREMIUM_DEVICE_LIMIT se > 0; caso contrário, ilimitado (null)
+      const limit = isPremium ? (PREMIUM_DEVICE_LIMIT > 0 ? PREMIUM_DEVICE_LIMIT : null) : FREE_DEVICE_LIMIT;
+      return json({ count: count || 0, limit, is_premium: isPremium }, 200);
     }
 
     if (event.httpMethod === 'POST') {
@@ -69,8 +86,10 @@ exports.handler = async function(event) {
         isPremium = false;
       }
 
-      // Se freemium, impede registrar um novo dispositivo além do limite (mas permite atualizar o próprio)
-      if (!isPremium) {
+      // Impede registrar um novo dispositivo além do limite configurado
+      // Freemium: usa FREE_DEVICE_LIMIT; Premium: usa PREMIUM_DEVICE_LIMIT quando > 0
+      const limitToEnforce = !isPremium ? FREE_DEVICE_LIMIT : (PREMIUM_DEVICE_LIMIT > 0 ? PREMIUM_DEVICE_LIMIT : null);
+      if (limitToEnforce != null) {
         const { data: existingRows, error: existErr } = await supabase
           .from('user_devices')
           .select('device_id')
@@ -86,8 +105,8 @@ exports.handler = async function(event) {
           .eq('user_id', userId);
         if (countErr) throw countErr;
 
-        if (!alreadyRegistered && (currentCount || 0) >= FREE_DEVICE_LIMIT) {
-          return json({ error: 'device_limit_reached', limit: FREE_DEVICE_LIMIT }, 409);
+        if (!alreadyRegistered && (currentCount || 0) >= limitToEnforce) {
+          return json({ error: 'device_limit_reached', limit: limitToEnforce }, 409);
         }
       }
 

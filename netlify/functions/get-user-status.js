@@ -29,8 +29,25 @@ exports.handler = async function(event) {
 
     const row = Array.isArray(data) ? data[0] : data;
     if (!row) {
-      // Perfil ainda não existe, considerar não-premium
-      return json({ id: userId, is_premium: false }, 200);
+      // Cria o perfil automaticamente se não existir (usa Service Role)
+      try {
+        let email = null;
+        try {
+          const { data: adminRes } = await supabase.auth.admin.getUserById(userId);
+          email = adminRes?.user?.email ?? null;
+        } catch {}
+        const { data: inserted, error: upsertError } = await supabase
+          .from('user_profiles')
+          .upsert({ id: userId, email, is_premium: false }, { onConflict: 'id' })
+          .select('id, is_premium')
+          .single();
+        if (upsertError) {
+          return json({ id: userId, is_premium: false }, 200);
+        }
+        return json({ id: inserted?.id || userId, is_premium: !!inserted?.is_premium }, 200);
+      } catch {
+        return json({ id: userId, is_premium: false }, 200);
+      }
     }
 
     return json({ id: row.id || userId, is_premium: !!row.is_premium });
