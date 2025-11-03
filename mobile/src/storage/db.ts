@@ -24,6 +24,7 @@ export function initDb() {
         frontImageUri TEXT,
         backImageUri TEXT,
         type TEXT,
+        category TEXT,
         issueDate TEXT,
         expiryDate TEXT,
         issuingState TEXT,
@@ -68,7 +69,7 @@ export function getDocuments(): Promise<DocumentItem[]> {
   return new Promise((resolve, reject) => {
     db.transaction(tx => {
       tx.executeSql(
-        'SELECT id, appId, name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand, favorite, synced, updatedAt FROM documents ORDER BY updatedAt DESC;',
+        'SELECT id, appId, name, number, frontImageUri, backImageUri, type, category, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand, favorite, synced, updatedAt FROM documents ORDER BY updatedAt DESC;',
         [],
         (_, { rows }) => {
           const items: DocumentItem[] = [];
@@ -123,7 +124,7 @@ export function addDocument(item: DocumentItem): Promise<number> {
     const appId = item.appId || `${now}-${Math.random().toString(36).slice(2, 10)}`;
     db.transaction(tx => {
       tx.executeSql(
-        'INSERT INTO documents (appId, name, number, frontImageUri, backImageUri, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand, favorite, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
+        'INSERT INTO documents (appId, name, number, frontImageUri, backImageUri, type, category, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand, favorite, synced, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
         [
           appId,
           item.name,
@@ -131,6 +132,7 @@ export function addDocument(item: DocumentItem): Promise<number> {
           item.frontImageUri || '',
           item.backImageUri || '',
           item.type || 'Outros',
+          item.category || '',
           item.issueDate || '',
           item.expiryDate || '',
           item.issuingState || '',
@@ -167,7 +169,7 @@ export function updateDocument(item: DocumentItem): Promise<void> {
   return new Promise((resolve, reject) => {
     db.transaction(tx => {
       tx.executeSql(
-        'UPDATE documents SET appId = COALESCE(appId, ?), name=?, number=?, frontImageUri=?, backImageUri=?, type=?, issueDate=?, expiryDate=?, issuingState=?, issuingCity=?, issuingAuthority=?, electorZone=?, electorSection=?, cardSubtype=?, bank=?, cvc=?, cardBrand=?, favorite=?, synced=?, updatedAt=? WHERE id=?;',
+        'UPDATE documents SET appId = COALESCE(appId, ?), name=?, number=?, frontImageUri=?, backImageUri=?, type=?, category=?, issueDate=?, expiryDate=?, issuingState=?, issuingCity=?, issuingAuthority=?, electorZone=?, electorSection=?, cardSubtype=?, bank=?, cvc=?, cardBrand=?, favorite=?, synced=?, updatedAt=? WHERE id=?;',
         [
           item.appId || null,
           item.name,
@@ -175,6 +177,7 @@ export function updateDocument(item: DocumentItem): Promise<void> {
           item.frontImageUri || null,
           item.backImageUri || null,
           item.type || null,
+          item.category || null,
           item.issueDate || null,
           item.expiryDate || null,
           item.issuingState || null,

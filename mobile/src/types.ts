@@ -21,6 +21,7 @@ export type DocumentItem = {
   cvc?: string; // CVC/CVV (3-4 dígitos)
   cardBrand?: string; // Bandeira (Visa, MasterCard, Elo, etc.)
   // Gerais
+  category?: string; // Categoria do documento (Pessoais, Financeiro, Saúde, Transporte)
   favorite?: number; // 0 or 1
   synced?: number; // 0 or 1
   updatedAt?: number; // epoch millis

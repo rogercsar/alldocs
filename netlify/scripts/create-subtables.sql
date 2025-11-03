@@ -106,16 +106,30 @@ CREATE TABLE IF NOT EXISTS public.doc_cartao (
     REFERENCES public.documents (user_id, app_id) ON DELETE CASCADE
 );
 
+-- Sub-tabela Saúde (planos, carteirinhas, etc.)
+CREATE TABLE IF NOT EXISTS public.doc_saude (
+  user_id UUID NOT NULL,
+  app_id INT4 NOT NULL,
+  operator TEXT,                -- Operadora do plano
+  beneficiary_number TEXT,      -- Número do beneficiário
+  plan TEXT,                    -- Nome do plano
+  expiry_date DATE,             -- Validade da carteirinha
+  PRIMARY KEY (user_id, app_id),
+  CONSTRAINT fk_saude_document FOREIGN KEY (user_id, app_id)
+    REFERENCES public.documents (user_id, app_id) ON DELETE CASCADE
+);
+
 -- 4) (Opcional) Índices auxiliares para consultas
 CREATE INDEX IF NOT EXISTS idx_documents_user ON public.documents (user_id);
 CREATE INDEX IF NOT EXISTS idx_documents_category ON public.documents (category);
 CREATE INDEX IF NOT EXISTS idx_doc_cartao_subtype ON public.doc_cartao (subtype);
 CREATE INDEX IF NOT EXISTS idx_doc_eleitor_zone ON public.doc_eleitor (elector_zone);
+CREATE INDEX IF NOT EXISTS idx_doc_saude_operator ON public.doc_saude (operator);
 
 -- 5) (Opcional) Atualizar categoria derivada nos registros existentes (ajuste conforme necessidade)
 -- Exemplo de regra simples:
 -- Transporte: type = 'Documento do veículo' OR doc_cartao.subtype LIKE '%transporte%'
--- Saúde: doc_cartao.subtype LIKE '%saúde%' OR '%plano%'
+-- Saúde: doc_saude.* OR doc_cartao.subtype LIKE '%saúde%' OR '%plano%'
 -- Financeiro: type = 'Cartões' (quando não entra nas anteriores)
 -- Pessoais: demais tipos
 -- Essas atualizações podem ser feitas via funções ou scripts específicos conforme seu dataset.

@@ -53,6 +53,7 @@ export async function addDocument(item: DocumentItem): Promise<number> {
     id,
     appId,
     type: item.type || 'Outros',
+    category: item.category || '',
     issueDate: item.issueDate || '',
     expiryDate: item.expiryDate || '',
     issuingState: item.issuingState || '',

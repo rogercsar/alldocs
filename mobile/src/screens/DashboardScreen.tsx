@@ -92,14 +92,13 @@ const allowsNativeDriver = Platform.OS !== 'web';
     const q = query.trim().toLowerCase();
     const byTextAndType = docs.filter((d) => {
       const matchesQuery = !q || (d.name?.toLowerCase().includes(q) || d.number?.toLowerCase().includes(q));
-      const matchesType = !typeFilter || (d.type === typeFilter);
       const matchesSync = !syncedOnly || (d.synced === 1);
       const matchesFav = !favoritesOnly || (d.favorite === 1);
       const matchesCat = !categoryFilter || categoryForDoc(d) === categoryFilter;
-      return matchesQuery && matchesType && matchesSync && matchesFav && matchesCat;
+      return matchesQuery && matchesSync && matchesFav && matchesCat;
     });
     return filterByExpiry(byTextAndType, expiryFilter);
-  }, [docs, query, typeFilter, syncedOnly, favoritesOnly, expiryFilter, categoryFilter]);
+  }, [docs, query, syncedOnly, favoritesOnly, expiryFilter, categoryFilter]);
 
   const expiredCount = useMemo(() => filterByExpiry(docs, 'expired').length, [docs]);
   const soonCount = useMemo(() => filterByExpiry(docs, 'soon').length, [docs]);
@@ -634,7 +633,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
                 />
               </View>
               <Pressable onPress={() => setIsTypeMenuOpen(true)} style={{ marginLeft:8, flexBasis:160, borderWidth:1, borderColor:'#D1D5DB', backgroundColor:'#fff', paddingVertical:10, paddingHorizontal:12, borderRadius:10, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
-                <Text style={{ color:'#374151', fontWeight:'600' }}>{typeFilter ?? 'Tipo'}</Text>
+                <Text style={{ color:'#374151', fontWeight:'600' }}>{categoryFilter ?? 'Categoria'}</Text>
                 <Ionicons name='chevron-down' size={16} color={'#6B7280'} />
               </Pressable>
             </View>
@@ -644,11 +643,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
               {renderChip(`Vencidos (${expiredCount})`, expiryFilter === 'expired', () => setExpiryFilter('expired'))}
               {renderChip(`Até 30 dias (${soonCount})`, expiryFilter === 'soon', () => setExpiryFilter('soon'))}
             </View>
-            <View style={{ flexDirection:'row', flexWrap:'wrap', marginTop:6 }}>
-              {['Pessoais','Financeiro','Saúde','Transporte'].map((cat) => (
-                renderChip(cat, categoryFilter === cat, () => setCategoryFilter(categoryFilter === cat ? null : cat))
-              ))}
-            </View>
+
           </View>
 
           {isTypeMenuOpen && (
@@ -656,8 +651,8 @@ const allowsNativeDriver = Platform.OS !== 'web';
         <Pressable onPress={() => setIsTypeMenuOpen(false)} style={{ position:'absolute', left:0, right:0, top:0, bottom:0, zIndex:30, backgroundColor:'rgba(17,24,39,0.03)' }} />
         <Animated.View style={{ position:'absolute', top: 64, right: 16, opacity: typeMenuOpacity, transform:[{ scale: typeMenuScale }], zIndex:40 }}>
           <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.12, shadowRadius:18, elevation:4, overflow:'hidden', minWidth: 180 }}>
-            {['Todos','RG','CNH','CPF','Passaporte','Outros'].map((label) => (
-              <Pressable key={label} onPress={() => { setIsTypeMenuOpen(false); setTypeFilter(label === 'Todos' ? null : label); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#F9FAFB' : '#fff' })}>
+            {['Todos','Pessoais','Financeiro','Saúde','Transporte'].map((label) => (
+              <Pressable key={label} onPress={() => { setIsTypeMenuOpen(false); setCategoryFilter(label === 'Todos' ? null : label); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#F9FAFB' : '#fff' })}>
                 <Text style={{ fontSize:14, color:'#111827', fontWeight:'700' }}>{label}</Text>
               </Pressable>
             ))}

@@ -61,6 +61,7 @@ export async function syncDocumentAddOrUpdate(item: DocumentItem, userId: string
         frontPath: frontPath || null,
         backPath: backPath || null,
         type: (item as any).type,
+        category: (item as any).category,
         issueDate: (item as any).issueDate,
         expiryDate: (item as any).expiryDate,
         issuingState: (item as any).issuingState,

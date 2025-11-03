@@ -72,6 +72,7 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
   const [bank, setBank] = useState(document?.bank || '');
   const [cardBrand, setCardBrand] = useState(document?.cardBrand || '');
   const [authorityOptions, setAuthorityOptions] = useState<Option[]>([]);
+  const [category, setCategory] = useState<string>(document?.category || currentCategory());
 
   function currentCategory() {
     const t = (docType || '').toLowerCase();
@@ -185,10 +186,10 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     if (document?.id) {
       const f = frontUri ? await saveImageToLocal(frontUri) : (document.frontImageUri || '');
       const b = backUri ? await saveImageToLocal(backUri) : (document.backImageUri || '');
-      await updateDocument({ id: document.id, appId: document.appId, name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
+      await updateDocument({ id: document.id, appId: document.appId, name, number, frontImageUri: f, backImageUri: b, type: docType, category, synced: 0, ...meta });
       setSaving(false);
       try {
-        await syncDocumentAddOrUpdate({ id: document.id, appId: document.appId, name, number, frontImageUri: f, backImageUri: b }, userId);
+        await syncDocumentAddOrUpdate({ id: document.id, appId: document.appId, name, number, frontImageUri: f, backImageUri: b, type: docType, category, ...meta }, userId);
       } catch {}
       showToast('Alterações salvas', { type: 'success' });
       onSaved();
@@ -198,10 +199,10 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     const f = frontUri ? await saveImageToLocal(frontUri) : '';
     const b = backUri ? await saveImageToLocal(backUri) : '';
     const appIdNew = document?.appId || String(Date.now());
-    const id = await addDocument({ appId: appIdNew, name, number, frontImageUri: f, backImageUri: b, type: docType, synced: 0, ...meta });
+    const id = await addDocument({ appId: appIdNew, name, number, frontImageUri: f, backImageUri: b, type: docType, category, synced: 0, ...meta });
     setSaving(false);
     try {
-      await syncDocumentAddOrUpdate({ id, appId: appIdNew, name, number, frontImageUri: f, backImageUri: b }, userId);
+      await syncDocumentAddOrUpdate({ id, appId: appIdNew, name, number, frontImageUri: f, backImageUri: b, type: docType, category, ...meta }, userId);
     } catch {}
     showToast('Documento criado', { type: 'success' });
     onSaved();
@@ -222,11 +223,19 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
               </TouchableOpacity>
             ))}
           </View>
-          <View style={{ marginTop:8, flexDirection:'row', alignItems:'center' }}>
-            <Text style={{ fontSize: 12, color:'#6B7280', marginRight:6 }}>Categoria:</Text>
-            <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#F3F4F6', borderWidth:1, borderColor:'#E5E7EB' }}>
-              <Text style={{ fontSize:12, fontWeight:'700', color:'#374151' }}>{currentCategory()}</Text>
-            </View>
+          <View style={{ marginTop:8 }}>
+            <SelectField
+              label={'Categoria'}
+              value={category}
+              placeholder={'Selecione a categoria'}
+              options={[
+                { label: 'Pessoais', value: 'Pessoais' },
+                { label: 'Financeiro', value: 'Financeiro' },
+                { label: 'Saúde', value: 'Saúde' },
+                { label: 'Transporte', value: 'Transporte' },
+              ]}
+              onChange={(v) => setCategory(v)}
+            />
           </View>
         </View>
 

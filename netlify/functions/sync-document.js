@@ -21,54 +21,163 @@ function toSafeAppId(input) {
   return res || 1;
 }
 
-async function upsertSubtableForType({ userId, appId, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand }) {
+// Função para determinar qual sub-tabela usar baseado no tipo de documento e subtipo
+function getSubtableForType(type, cardSubtype) {
+  const t = (type || '').toLowerCase();
+  const sub = (cardSubtype || '').toLowerCase();
+  if (!t) return null;
+  
+  if (t.includes('rg')) return 'doc_rg';
+  if (t.includes('cnh')) return 'doc_cnh';
+  if (t.includes('cpf')) return 'doc_cpf';
+  if (t.includes('passaport') || t.includes('passaporte')) return 'doc_passaporte';
+  if (t.includes('eleitor') || t.includes('título')) return 'doc_eleitor';
+  if (t.includes('veículo') || t.includes('veiculo') || t.includes('documento do veículo')) return 'doc_veiculo';
+  // Quando for cartão de plano de saúde, usar doc_saude
+  if (t.includes('cart') || t.includes('cartão') || t.includes('cartao')) {
+    const isHealthSubtype = (
+      sub.includes('saúde') || sub.includes('saude') || sub.includes('plano') ||
+      sub.includes('odont') || sub.includes('odonto') || sub.includes('dent') ||
+      sub.includes('seguro')
+    );
+    if (isHealthSubtype) return 'doc_saude';
+    return 'doc_cartao';
+  }
+  // Tipo "Saúde" direto também mapeia para doc_saude
+  if (t.includes('saúde') || t.includes('saude') || t.includes('odont') || t.includes('odonto') || t.includes('seguro')) return 'doc_saude';
+  
+  return null;
+}
+
+// Função para preparar dados específicos da sub-tabela
+function prepareSubtableData(subtable, { userId, appId, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand, plate, renavam, operator, beneficiaryNumber, plan }) {
+  const baseData = { user_id: userId, app_id: appId };
+  
+  switch (subtable) {
+    case 'doc_rg':
+      return {
+        ...baseData,
+        issue_date: issueDate || null,
+        issuing_state: issuingState || null,
+        issuing_city: issuingCity || null,
+        issuing_authority: issuingAuthority || null
+      };
+      
+    case 'doc_cnh':
+      return {
+        ...baseData,
+        issue_date: issueDate || null,
+        expiry_date: expiryDate || null,
+        issuing_state: issuingState || null,
+        issuing_city: issuingCity || null,
+        issuing_authority: issuingAuthority || null
+      };
+      
+    case 'doc_cpf':
+      return baseData;
+      
+    case 'doc_passaporte':
+      return {
+        ...baseData,
+        issue_date: issueDate || null,
+        expiry_date: expiryDate || null,
+        issuing_authority: issuingAuthority || null
+      };
+      
+    case 'doc_eleitor':
+      return {
+        ...baseData,
+        elector_zone: electorZone || null,
+        elector_section: electorSection || null
+      };
+      
+    case 'doc_veiculo':
+      return {
+        ...baseData,
+        plate: plate || null,
+        renavam: renavam || null
+      };
+      
+    case 'doc_cartao':
+      return {
+        ...baseData,
+        subtype: cardSubtype || null,
+        brand: cardBrand || null,
+        bank: bank || null,
+        cvc: cvc || null,
+        expiry_date: expiryDate || null
+      };
+    
+    case 'doc_saude':
+      return {
+        ...baseData,
+        operator: operator || null,
+        beneficiary_number: beneficiaryNumber || null,
+        plan: plan || null,
+        expiry_date: expiryDate || null
+      };
+      
+    default:
+      return baseData;
+  }
+}
+
+async function upsertSubtableForType(params) {
   try {
-    const t = (type || '').toLowerCase();
-    if (!t) return;
-    if (t.includes('rg')) {
-      await supabase
-        .from('doc_rg')
-        .upsert({ user_id: userId, app_id: appId, issue_date: issueDate || null, expiry_date: expiryDate || null, issuing_state: issuingState || null, issuing_city: issuingCity || null, issuing_authority: issuingAuthority || null }, { onConflict: 'user_id,app_id' });
+    const { userId, appId, type, cardSubtype } = params;
+    const subtable = getSubtableForType(type, cardSubtype);
+    
+    if (!subtable) {
+      console.log(`Nenhuma sub-tabela encontrada para o tipo: ${type}`);
       return;
     }
-    if (t.includes('cnh')) {
-      await supabase
-        .from('doc_cnh')
-        .upsert({ user_id: userId, app_id: appId, issue_date: issueDate || null, expiry_date: expiryDate || null, issuing_state: issuingState || null, issuing_city: issuingCity || null, issuing_authority: issuingAuthority || null }, { onConflict: 'user_id,app_id' });
-      return;
+    
+    const data = prepareSubtableData(subtable, params);
+    console.log(`Inserindo/atualizando na sub-tabela ${subtable}:`, JSON.stringify(data, null, 2));
+    
+    const { error } = await supabase
+      .from(subtable)
+      .upsert(data, { onConflict: 'user_id,app_id' });
+      
+    if (error) {
+      console.error(`Erro ao fazer upsert na sub-tabela ${subtable}:`, error.message);
+      throw error;
     }
-    if (t.includes('cpf')) {
-      await supabase
-        .from('doc_cpf')
-        .upsert({ user_id: userId, app_id: appId }, { onConflict: 'user_id,app_id' });
-      return;
-    }
-    if (t.includes('passaport') || t.includes('passaporte')) {
-      await supabase
-        .from('doc_passaporte')
-        .upsert({ user_id: userId, app_id: appId, issue_date: issueDate || null, expiry_date: expiryDate || null }, { onConflict: 'user_id,app_id' });
-      return;
-    }
-    if (t.includes('eleitor')) {
-      await supabase
-        .from('doc_eleitor')
-        .upsert({ user_id: userId, app_id: appId, elector_zone: electorZone || null, elector_section: electorSection || null }, { onConflict: 'user_id,app_id' });
-      return;
-    }
-    if (t.includes('veículo') || t.includes('veiculo')) {
-      await supabase
-        .from('doc_veiculo')
-        .upsert({ user_id: userId, app_id: appId }, { onConflict: 'user_id,app_id' });
-      return;
-    }
-    if (t.includes('cart')) {
-      await supabase
-        .from('doc_cartao')
-        .upsert({ user_id: userId, app_id: appId, subtype: cardSubtype || null, brand: cardBrand || null, bank: bank || null, cvc: cvc || null }, { onConflict: 'user_id,app_id' });
-      return;
-    }
+    
+    console.log(`Upsert realizado com sucesso na sub-tabela ${subtable}`);
   } catch (e) {
     console.warn('Subtable upsert failed:', e.message || String(e));
+    throw e; // Re-throw para que o erro seja tratado pelo handler principal
+  }
+}
+
+// Função para deletar dados das sub-tabelas
+async function deleteFromSubtables({ userId, appId, type, cardSubtype }) {
+  try {
+    const subtable = getSubtableForType(type, cardSubtype);
+    
+    if (!subtable) {
+      console.log(`Nenhuma sub-tabela encontrada para deletar o tipo: ${type}`);
+      return;
+    }
+    
+    console.log(`Deletando da sub-tabela ${subtable} para user_id: ${userId}, app_id: ${appId}`);
+    
+    const { error } = await supabase
+      .from(subtable)
+      .delete()
+      .eq('user_id', userId)
+      .eq('app_id', appId);
+      
+    if (error) {
+      console.error(`Erro ao deletar da sub-tabela ${subtable}:`, error.message);
+      throw error;
+    }
+    
+    console.log(`Dados deletados com sucesso da sub-tabela ${subtable}`);
+  } catch (e) {
+    console.warn('Subtable delete failed:', e.message || String(e));
+    // Não re-throw aqui para não impedir a deleção do documento principal
   }
 }
 
@@ -81,6 +190,7 @@ exports.handler = async function(event) {
     const { id, name, number, frontPath, backPath, userId } = body;
     const {
       type,
+      category,
       issueDate,
       expiryDate,
       issuingState,
@@ -92,6 +202,11 @@ exports.handler = async function(event) {
       bank,
       cvc,
       cardBrand,
+      plate,
+      renavam,
+      operator,
+      beneficiaryNumber,
+      plan,
     } = body;
 
     if (!userId || typeof userId !== 'string') {
@@ -148,6 +263,7 @@ exports.handler = async function(event) {
         payload[col] = val ?? null;
       };
       addIfPresent('type', type);
+      addIfPresent('category', category);
       addIfPresent('issue_date', issueDate);
       addIfPresent('expiry_date', expiryDate);
       addIfPresent('issuing_state', issuingState);
@@ -159,6 +275,8 @@ exports.handler = async function(event) {
       addIfPresent('bank', bank);
       addIfPresent('cvc', cvc);
       addIfPresent('card_brand', cardBrand);
+      addIfPresent('plate', plate);
+      addIfPresent('renavam', renavam);
 
       console.log(`Payload final para sync:`, JSON.stringify(payload, null, 2));
       console.log(`Colunas disponíveis:`, Array.from(columnSet || []).sort());
@@ -193,18 +311,60 @@ exports.handler = async function(event) {
         }
         if (insErr) throw insErr;
       }
-+     await upsertSubtableForType({ userId, appId, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand });
++     // Fazer upsert na sub-tabela apropriada
+      await upsertSubtableForType({ 
+        userId, 
+        appId, 
+        type, 
+        category,
+        issueDate, 
+        expiryDate, 
+        issuingState, 
+        issuingCity, 
+        issuingAuthority, 
+        electorZone, 
+        electorSection, 
+        cardSubtype, 
+        bank, 
+        cvc, 
+        cardBrand,
+        plate,
+        renavam,
+        operator,
+        beneficiaryNumber,
+        plan
+      });
       return json({ ok: true });
     }
 
     if (event.httpMethod === 'DELETE') {
       const appId = toSafeAppId(id);
       if (!Number.isFinite(appId)) return json({ error: 'Invalid app_id' }, 400);
+      
+      // Primeiro, buscar o documento para obter o tipo antes de deletar
+      const { data: docData, error: fetchError } = await supabase
+        .from('documents')
+        .select('type, card_subtype')
+        .eq('app_id', appId)
+        .eq('user_id', userId)
+        .limit(1);
+        
+      if (fetchError) throw fetchError;
+      
+      // Deletar das sub-tabelas primeiro (se o documento existir)
+      if (Array.isArray(docData) && docData.length > 0) {
+        const documentType = docData[0].type;
+        const documentSubtype = docData[0].card_subtype || null;
+        await deleteFromSubtables({ userId, appId, type: documentType, cardSubtype: documentSubtype });
+      }
+      
+      // Depois deletar o documento principal
       const { data, error } = await supabase
         .from('documents')
         .delete()
         .eq('app_id', appId)
         .eq('user_id', userId);
+        
       if (error) throw error;
       return json({ ok: true });
     }
