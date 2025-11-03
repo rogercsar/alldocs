@@ -88,9 +88,6 @@ export default function App() {
             <Stack.Screen name="Plans" options={{ title: 'Planos' }}>
               {(props) => <PlansScreen navigation={props.navigation} />}
             </Stack.Screen>
-+           <Stack.Screen name="Devices" options={{ title: 'Dispositivos' }}>
-+             {(props) => <DevicesScreen navigation={props.navigation} />}
-+           </Stack.Screen>
           </>
         ) : null}
 
@@ -133,6 +130,9 @@ export default function App() {
               onDone={() => props.navigation.replace(props.route?.params?.redirectToUpgrade ? 'Upgrade' : 'Dashboard')}
             />
           )}
+        </Stack.Screen>
+        <Stack.Screen name="Devices" options={{ title: 'Dispositivos' }}>
+          {(props) => <DevicesScreen navigation={props.navigation} />}
         </Stack.Screen>
         <Stack.Screen name="Profile" options={{ headerTitle: 'Perfil' }}>
           {(props) => (

@@ -61,6 +61,10 @@ function categoryForDoc(d: DocumentItem): string {
   if (t.includes('cart')) return 'Financeiro';
   return 'Pessoais';
 }
+// Preferir categoria salva quando existir
+function displayCategory(d: DocumentItem): string {
+  return d.category || categoryForDoc(d);
+}
 
 export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; onLogout?: () => void; userId: string; }) {
   const navigation = useNavigation<any>();
@@ -95,7 +99,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
       const matchesQuery = !q || (d.name?.toLowerCase().includes(q) || d.number?.toLowerCase().includes(q));
       const matchesSync = !syncedOnly || (d.synced === 1);
       const matchesFav = !favoritesOnly || (d.favorite === 1);
-      const matchesCat = !categoryFilter || categoryForDoc(d) === categoryFilter;
+      const matchesCat = !categoryFilter || displayCategory(d) === categoryFilter;
       return matchesQuery && matchesSync && matchesFav && matchesCat;
     });
     return filterByExpiry(byTextAndType, expiryFilter);
@@ -509,7 +513,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
                 </View>
               ) : null}
               <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#F3F4F6', borderWidth:1, borderColor:'#E5E7EB', marginRight:6, marginBottom:6 }}>
-                <Text style={{ fontSize:11, fontWeight:'700', color:'#374151' }}>{categoryForDoc(item)}</Text>
+                <Text style={{ fontSize:11, fontWeight:'700', color:'#374151' }}>{displayCategory(item)}</Text>
               </View>
             </View>
 
