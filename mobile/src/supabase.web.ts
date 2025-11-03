@@ -43,8 +43,15 @@ function createStub() {
   } as any;
 }
 
-export const supabase: any = (SUPABASE_URL && SUPABASE_ANON_KEY)
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+const hasEnv = !!SUPABASE_URL && !!SUPABASE_ANON_KEY;
+if (!hasEnv) {
+  console.warn('[supabase] web: usando stub (variáveis EXPO_PUBLIC_SUPABASE_URL/ANON_KEY ausentes)');
+} else {
+  console.info('[supabase] web: cliente Supabase inicializado');
+}
+
+export const supabase: any = hasEnv
+  ? createClient(SUPABASE_URL as string, SUPABASE_ANON_KEY as string, {
       global: {
         headers: {
           apikey: SUPABASE_ANON_KEY as string,

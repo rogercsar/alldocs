@@ -1,10 +1,32 @@
 import type { DocumentItem } from '../types';
 
-const memory: DocumentItem[] = [];
-let memId = 1;
+// Persistência simples no Web para suportar offline e sobreviver a refresh
+const STORAGE_KEY = 'alldocs_documents';
+
+function loadMemory(): DocumentItem[] {
+  try {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null;
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveMemory(items: DocumentItem[]): void {
+  try {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch {}
+}
+
+let memory: DocumentItem[] = loadMemory();
+let memId = (memory.reduce((max, d) => Math.max(max, d.id || 0), 0) || 0) + 1;
 
 export function initDb() {
-  // Web: sem SQLite; usa armazenamento em memória
+  // Web: sem SQLite; usa armazenamento persistente via localStorage
+  memory = loadMemory();
 }
 
 export function getDocuments(): Promise<DocumentItem[]> {
@@ -47,20 +69,27 @@ export async function addDocument(item: DocumentItem): Promise<number> {
     updatedAt: now,
   };
   memory.unshift(normalized);
+  saveMemory(memory);
   return id;
 }
 
 export function updateDocument(item: DocumentItem): Promise<void> {
   const now = Date.now();
-  const idx = memory.findIndex(d => (item.appId ? d.appId === item.appId : d.id === item.id));
+  const idx = memory.findIndex(d => d.id === item.id);
   if (idx >= 0) {
-    memory[idx] = { ...memory[idx], ...item, updatedAt: now, appId: memory[idx].appId || item.appId } as DocumentItem;
+    memory[idx] = {
+      ...memory[idx],
+      ...item,
+      updatedAt: now,
+    };
+    // mantém posição pelo updatedAt em próxima leitura
+    saveMemory(memory);
   }
   return Promise.resolve();
 }
 
 export function deleteDocument(id: number): Promise<void> {
-  const idx = memory.findIndex(m => m.id === id);
-  if (idx >= 0) memory.splice(idx, 1);
+  memory = memory.filter(d => d.id !== id);
+  saveMemory(memory);
   return Promise.resolve();
 }
