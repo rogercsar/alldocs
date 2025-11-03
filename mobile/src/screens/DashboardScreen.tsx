@@ -376,15 +376,11 @@ const allowsNativeDriver = Platform.OS !== 'web';
           }
       
           // Remoção remota
-          -           const userId = auth?.userId;
-          -           const canSync = !!userId && userId !== 'anonymous' && /^[0-9a-f-]{36}$/i.test(userId);
-          -           if (canSync) {
-          -             const forSync = (doc as any).appId ?? (localMatch as any)?.id ?? doc.number ?? doc.name ?? itemKey;
-          -             await syncDocumentDelete(forSync, userId!).catch((e) => console.error('[dashboard] remote delete error', e));
-          +           const canSync = !!userId && userId !== 'anonymous' && /^[0-9a-f-]{36}$/i.test(userId);
-          +           if (canSync) {
-          +             const forSync = (doc as any).appId ?? (localMatch as any)?.id ?? doc.number ?? doc.name ?? itemKey;
-          +             await syncDocumentDelete(forSync, userId).catch((e) => console.error('[dashboard] remote delete error', e));
+          const userId = auth?.userId;
+          const canSync = !!userId && userId !== 'anonymous' && /^[0-9a-f-]{36}$/i.test(userId);
+          if (canSync) {
+          const forSync = (doc as any).appId ?? (localMatch as any)?.id ?? doc.number ?? doc.name ?? itemKey;
+          await syncDocumentDelete(forSync, userId).catch((e) => console.error('[dashboard] remote delete error', e));
           } else {
             console.log('[dashboard] skip remote delete: invalid userId');
           }
