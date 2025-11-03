@@ -357,6 +357,45 @@ const allowsNativeDriver = Platform.OS !== 'web';
         }
       };
 
+      const onDelete = async (doc: DocumentItem) => {
+        try {
+          setMenuFor(null);
+          let localId: number | undefined = typeof doc.id === 'number' ? doc.id : undefined;
+          if (localId === undefined) {
+            try {
+              const all = await getDocuments();
+              const match = all.find((loc) => {
+                const appIdMatch = doc.appId && String((loc as any).appId || '') === String(doc.appId);
+                const byFields = (
+                  (loc.number && doc.number && loc.number === doc.number) ||
+                  (loc.name && doc.name && loc.name === doc.name) ||
+                  (loc.cardSubtype && doc.cardSubtype && loc.cardSubtype === doc.cardSubtype)
+                );
+                return appIdMatch || byFields;
+              });
+              if (match && typeof match.id === 'number') localId = match.id;
+            } catch {}
+          }
+
+          if (typeof localId === 'number') {
+            await deleteDocument(localId);
+          }
+
+          if (userId && userId !== 'anonymous') {
+            const remoteKey = (doc as any).appId ?? localId;
+            if (remoteKey !== undefined) {
+              await syncDocumentDelete(remoteKey as any, userId);
+            }
+          }
+
+          showToast('Documento excluído', { type: 'success' });
+          await load();
+        } catch (e) {
+          console.warn('[dashboard] delete error', e);
+          Alert.alert('Erro ao excluir', String(e));
+        }
+      };
+
       const renderItem = ({ item }: { item: DocumentItem }) => {
         const icon = iconForType(item.type);
         const hasId = typeof item.id === 'number';
