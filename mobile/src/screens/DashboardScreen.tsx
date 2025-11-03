@@ -97,6 +97,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
     setMenuFor(null);
     initDb();
     const [items, cnt] = await Promise.all([getDocuments(), countDocuments()]);
+    let docCount = cnt;
     
     console.log('[dashboard] load start', {
       userId,
@@ -204,7 +205,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
               } as DocumentItem;
             })
           );
-          const mapped: DocumentItem[] = await Promise.all(
+          const mappedA: DocumentItem[] = await Promise.all(
             rows.map(async (d: any) => {
               let front = '';
               let back = '';
@@ -289,6 +290,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
           const merged = Array.from(byKey.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
           console.log('[dashboard] set remote docs', merged.length);
           setDocs(merged);
+          docCount = merged.length;
           usedRemote = true;
         }
       }
@@ -303,7 +305,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
     } else {
       console.log('[dashboard] remote docs already set, skipping local fallback');
     }
-    setLimitReached(!isPremium && cnt >= 4);
+    setLimitReached(!isPremium && docCount >= 4);
       }, [userId]);
 
       useEffect(() => {
