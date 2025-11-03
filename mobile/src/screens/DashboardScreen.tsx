@@ -138,10 +138,9 @@ const allowsNativeDriver = Platform.OS !== 'web';
         console.log('[dashboard] supabase query start');
         const { data: remote, error } = await supabase
           .from('documents')
--          .select('app_id,name,number,front_path,back_path,updated_at')
-+          .select('app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority,elector_zone,elector_section,card_subtype,bank,cvc,card_brand')
-           .eq('user_id', userId)
-           .order('updated_at', { ascending: false });
+          .select('app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority,elector_zone,elector_section,card_subtype,bank,cvc,card_brand')
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false });
 
         let rows = remote;
         if ((error && error.message && /api key|apikey/i.test(error.message)) || (!rows || rows.length === 0)) {
