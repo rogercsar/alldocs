@@ -21,6 +21,57 @@ function toSafeAppId(input) {
   return res || 1;
 }
 
+async function upsertSubtableForType({ userId, appId, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand }) {
+  try {
+    const t = (type || '').toLowerCase();
+    if (!t) return;
+    if (t.includes('rg')) {
+      await supabase
+        .from('doc_rg')
+        .upsert({ user_id: userId, app_id: appId, issue_date: issueDate || null, expiry_date: expiryDate || null, issuing_state: issuingState || null, issuing_city: issuingCity || null, issuing_authority: issuingAuthority || null }, { onConflict: 'user_id,app_id' });
+      return;
+    }
+    if (t.includes('cnh')) {
+      await supabase
+        .from('doc_cnh')
+        .upsert({ user_id: userId, app_id: appId, issue_date: issueDate || null, expiry_date: expiryDate || null, issuing_state: issuingState || null, issuing_city: issuingCity || null, issuing_authority: issuingAuthority || null }, { onConflict: 'user_id,app_id' });
+      return;
+    }
+    if (t.includes('cpf')) {
+      await supabase
+        .from('doc_cpf')
+        .upsert({ user_id: userId, app_id: appId }, { onConflict: 'user_id,app_id' });
+      return;
+    }
+    if (t.includes('passaport') || t.includes('passaporte')) {
+      await supabase
+        .from('doc_passaporte')
+        .upsert({ user_id: userId, app_id: appId, issue_date: issueDate || null, expiry_date: expiryDate || null }, { onConflict: 'user_id,app_id' });
+      return;
+    }
+    if (t.includes('eleitor')) {
+      await supabase
+        .from('doc_eleitor')
+        .upsert({ user_id: userId, app_id: appId, elector_zone: electorZone || null, elector_section: electorSection || null }, { onConflict: 'user_id,app_id' });
+      return;
+    }
+    if (t.includes('veículo') || t.includes('veiculo')) {
+      await supabase
+        .from('doc_veiculo')
+        .upsert({ user_id: userId, app_id: appId }, { onConflict: 'user_id,app_id' });
+      return;
+    }
+    if (t.includes('cart')) {
+      await supabase
+        .from('doc_cartao')
+        .upsert({ user_id: userId, app_id: appId, subtype: cardSubtype || null, brand: cardBrand || null, bank: bank || null, cvc: cvc || null }, { onConflict: 'user_id,app_id' });
+      return;
+    }
+  } catch (e) {
+    console.warn('Subtable upsert failed:', e.message || String(e));
+  }
+}
+
 exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders() };
@@ -142,6 +193,7 @@ exports.handler = async function(event) {
         }
         if (insErr) throw insErr;
       }
++     await upsertSubtableForType({ userId, appId, type, issueDate, expiryDate, issuingState, issuingCity, issuingAuthority, electorZone, electorSection, cardSubtype, bank, cvc, cardBrand });
       return json({ ok: true });
     }
 

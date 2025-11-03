@@ -73,6 +73,14 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
   const [cardBrand, setCardBrand] = useState(document?.cardBrand || '');
   const [authorityOptions, setAuthorityOptions] = useState<Option[]>([]);
 
+  function currentCategory() {
+    const t = (docType || '').toLowerCase();
+    const sub = (cardSubtype || '').toLowerCase();
+    if (t.includes('veículo') || sub.includes('transporte')) return 'Transporte';
+    if (sub.includes('saúde') || sub.includes('plano')) return 'Saúde';
+    if (t.includes('cart')) return 'Financeiro';
+    return 'Pessoais';
+  }
   useEffect(() => {
     setName(document?.name || '');
     setNumber(document?.number || '');
@@ -213,6 +221,12 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
                 <Text style={{ color: docType === t ? primaryColor : '#374151', fontWeight:'600' }}>{t}</Text>
               </TouchableOpacity>
             ))}
+          </View>
+          <View style={{ marginTop:8, flexDirection:'row', alignItems:'center' }}>
+            <Text style={{ fontSize: 12, color:'#6B7280', marginRight:6 }}>Categoria:</Text>
+            <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#F3F4F6', borderWidth:1, borderColor:'#E5E7EB' }}>
+              <Text style={{ fontSize:12, fontWeight:'700', color:'#374151' }}>{currentCategory()}</Text>
+            </View>
           </View>
         </View>
 

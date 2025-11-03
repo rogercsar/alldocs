@@ -53,6 +53,15 @@ function brandIconName(brand?: string) {
   }
 }
 
+function categoryForDoc(d: DocumentItem): string {
+  const t = (d.type || '').toLowerCase();
+  const sub = (d.cardSubtype || '').toLowerCase();
+  if (t.includes('veículo') || sub.includes('transporte')) return 'Transporte';
+  if (sub.includes('saúde') || sub.includes('plano')) return 'Saúde';
+  if (t.includes('cart')) return 'Financeiro';
+  return 'Pessoais';
+}
+
 export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; onLogout?: () => void; userId: string; }) {
   const navigation = useNavigation<any>();
   const { showToast } = useToast();
@@ -77,6 +86,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
   const [syncedOnly, setSyncedOnly] = useState(false);
   const [expiryFilter, setExpiryFilter] = useState<'all' | 'expired' | 'soon'>('all');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   const filteredDocs = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -85,10 +95,11 @@ const allowsNativeDriver = Platform.OS !== 'web';
       const matchesType = !typeFilter || (d.type === typeFilter);
       const matchesSync = !syncedOnly || (d.synced === 1);
       const matchesFav = !favoritesOnly || (d.favorite === 1);
-      return matchesQuery && matchesType && matchesSync && matchesFav;
+      const matchesCat = !categoryFilter || categoryForDoc(d) === categoryFilter;
+      return matchesQuery && matchesType && matchesSync && matchesFav && matchesCat;
     });
     return filterByExpiry(byTextAndType, expiryFilter);
-  }, [docs, query, typeFilter, syncedOnly, favoritesOnly, expiryFilter]);
+  }, [docs, query, typeFilter, syncedOnly, favoritesOnly, expiryFilter, categoryFilter]);
 
   const expiredCount = useMemo(() => filterByExpiry(docs, 'expired').length, [docs]);
   const soonCount = useMemo(() => filterByExpiry(docs, 'soon').length, [docs]);
@@ -497,6 +508,9 @@ const allowsNativeDriver = Platform.OS !== 'web';
                   <Text style={{ fontSize:11, fontWeight:'700', color:'#0C4A6E' }}>Zona {item.electorZone || '—'} • Seção {item.electorSection || '—'}</Text>
                 </View>
               ) : null}
+              <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#F3F4F6', borderWidth:1, borderColor:'#E5E7EB', marginRight:6, marginBottom:6 }}>
+                <Text style={{ fontSize:11, fontWeight:'700', color:'#374151' }}>{categoryForDoc(item)}</Text>
+              </View>
             </View>
 
             {isOpen && (
@@ -629,6 +643,11 @@ const allowsNativeDriver = Platform.OS !== 'web';
               {renderChip('Todos', expiryFilter === 'all', () => setExpiryFilter('all'))}
               {renderChip(`Vencidos (${expiredCount})`, expiryFilter === 'expired', () => setExpiryFilter('expired'))}
               {renderChip(`Até 30 dias (${soonCount})`, expiryFilter === 'soon', () => setExpiryFilter('soon'))}
+            </View>
+            <View style={{ flexDirection:'row', flexWrap:'wrap', marginTop:6 }}>
+              {['Pessoais','Financeiro','Saúde','Transporte'].map((cat) => (
+                renderChip(cat, categoryFilter === cat, () => setCategoryFilter(categoryFilter === cat ? null : cat))
+              ))}
             </View>
           </View>
 
