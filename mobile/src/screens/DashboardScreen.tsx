@@ -138,9 +138,10 @@ const allowsNativeDriver = Platform.OS !== 'web';
         console.log('[dashboard] supabase query start');
         const { data: remote, error } = await supabase
           .from('documents')
-          .select('app_id,name,number,front_path,back_path,updated_at')
-          .eq('user_id', userId)
-          .order('updated_at', { ascending: false });
+-          .select('app_id,name,number,front_path,back_path,updated_at')
++          .select('app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority,elector_zone,elector_section,card_subtype,bank,cvc,card_brand')
+           .eq('user_id', userId)
+           .order('updated_at', { ascending: false });
 
         let rows = remote;
         if ((error && error.message && /api key|apikey/i.test(error.message)) || (!rows || rows.length === 0)) {
@@ -204,6 +205,44 @@ const allowsNativeDriver = Platform.OS !== 'web';
               } as DocumentItem;
             })
           );
+          const mapped: DocumentItem[] = await Promise.all(
+            rows.map(async (d: any) => {
+              let front = '';
+              let back = '';
+              if (base) {
+                try {
+                  const r = await fetch(`${base}/.netlify/functions/signed-urls?userId=${userId}&appId=${d.app_id}`);
+                  if (r.ok) {
+                    const j = await r.json();
+                    front = j.frontSignedUrl || '';
+                    back = j.backSignedUrl || '';
+                  }
+                } catch {}
+              }
+              const item: any = {
+                appId: d.app_id,
+                name: d.name,
+                number: d.number,
+                frontImageUri: front,
+                backImageUri: back,
+                synced: 1,
+                updatedAt: d.updated_at ? new Date(d.updated_at).getTime() : undefined,
+              };
+              if (d.type != null) item.type = d.type;
+              if (d.issue_date != null) item.issueDate = d.issue_date;
+              if (d.expiry_date != null) item.expiryDate = d.expiry_date;
+              if (d.issuing_state != null) item.issuingState = d.issuing_state;
+              if (d.issuing_city != null) item.issuingCity = d.issuing_city;
+              if (d.issuing_authority != null) item.issuingAuthority = d.issuing_authority;
+              if (d.elector_zone != null) item.electorZone = d.elector_zone;
+              if (d.elector_section != null) item.electorSection = d.elector_section;
+              if (d.card_subtype != null) item.cardSubtype = d.card_subtype;
+              if (d.bank != null) item.bank = d.bank;
+              if (d.cvc != null) item.cvc = d.cvc;
+              if (d.card_brand != null) item.cardBrand = d.card_brand;
+              return item as DocumentItem;
+            })
+          );
           const safeId = (v: any) => {
             const MAX = 2147483647;
             if (typeof v === 'number') return (v > 0 && v <= MAX) ? v : (Math.abs(v) % MAX) || 1;
@@ -238,8 +277,14 @@ const allowsNativeDriver = Platform.OS !== 'web';
               number: rem.number || prev?.number || '',
               frontImageUri: rem.frontImageUri || prev?.frontImageUri,
               backImageUri: rem.backImageUri || prev?.backImageUri,
+              // Preserva campos de tipo/brand/datas se remoto vier vazio
+              type: (rem as any)?.type ?? (prev as any)?.type,
+              cardBrand: (rem as any)?.cardBrand ?? (prev as any)?.cardBrand,
+              cardSubtype: (rem as any)?.cardSubtype ?? (prev as any)?.cardSubtype,
+              issueDate: (rem as any)?.issueDate ?? (prev as any)?.issueDate,
+              expiryDate: (rem as any)?.expiryDate ?? (prev as any)?.expiryDate,
               updatedAt: rem.updatedAt ?? prev?.updatedAt,
-            };
+            } as DocumentItem;
             byKey.set(targetKey, mergedItem);
           }
           const merged = Array.from(byKey.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
