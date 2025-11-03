@@ -357,45 +357,42 @@ const allowsNativeDriver = Platform.OS !== 'web';
         }
       };
 
-      const onDelete = async (doc: DocumentItem) => {
+      const onDelete = useCallback(async (doc: DocumentItem) => {
         try {
+          const itemKey = keyForItem(doc);
+          console.log('[dashboard] delete click', { key: itemKey, appId: (doc as any).appId, name: doc.name, number: doc.number });
+      
+          // Fecha o menu imediatamente
           setMenuFor(null);
-          let localId: number | undefined = typeof doc.id === 'number' ? doc.id : undefined;
-          if (localId === undefined) {
-            try {
-              const all = await getDocuments();
-              const match = all.find((loc) => {
-                const appIdMatch = doc.appId && String((loc as any).appId || '') === String(doc.appId);
-                const byFields = (
-                  (loc.number && doc.number && loc.number === doc.number) ||
-                  (loc.name && doc.name && loc.name === doc.name) ||
-                  (loc.cardSubtype && doc.cardSubtype && loc.cardSubtype === doc.cardSubtype)
-                );
-                return appIdMatch || byFields;
-              });
-              if (match && typeof match.id === 'number') localId = match.id;
-            } catch {}
+      
+          // Remoção otimista do estado atual
+          setDocs((prev) => prev.filter((d) => keyForItem(d) !== itemKey));
+      
+          // Remoção local
+          const localDocs = await getDocuments().catch(() => []);
+          const localMatch = localDocs.find((d: any) => keyForItem(d) === itemKey);
+          if (localMatch && (localMatch as any).id) {
+            await deleteDocument((localMatch as any).id).catch((e) => console.error('[dashboard] local delete error', e));
           }
-
-          if (typeof localId === 'number') {
-            await deleteDocument(localId);
+      
+          // Remoção remota
+          const userId = auth?.userId;
+          const canSync = !!userId && userId !== 'anonymous' && /^[0-9a-f-]{36}$/i.test(userId);
+          if (canSync) {
+            const forSync = (doc as any).appId ?? (localMatch as any)?.id ?? doc.number ?? doc.name ?? itemKey;
+            await syncDocumentDelete(forSync, userId!).catch((e) => console.error('[dashboard] remote delete error', e));
+          } else {
+            console.log('[dashboard] skip remote delete: invalid userId');
           }
-
-          if (userId && userId !== 'anonymous') {
-            const remoteKey = (doc as any).appId ?? localId;
-            if (remoteKey !== undefined) {
-              await syncDocumentDelete(remoteKey as any, userId);
-            }
-          }
-
-          showToast('Documento excluído', { type: 'success' });
-          await load();
+      
+          // Recarrega em background para refletir estado do servidor
+          load();
+          showToast('Documento excluído.');
         } catch (e) {
-          console.warn('[dashboard] delete error', e);
-          Alert.alert('Erro ao excluir', String(e));
+          console.error('[dashboard] onDelete error', e);
+          showToast('Erro ao excluir documento.');
         }
-      };
-
+      }, [auth, load]);
       const renderItem = ({ item }: { item: DocumentItem }) => {
         const icon = iconForType(item.type);
         const hasId = typeof item.id === 'number';

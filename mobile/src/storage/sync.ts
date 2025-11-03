@@ -98,6 +98,8 @@ export async function syncDocumentDelete(appIdOrLocalId: string | number, userId
     if (!resp.ok) {
       const txt = await resp.text().catch(() => '');
       console.error('[sync] delete failed', resp.status, txt);
+    } else {
+      console.log('[sync] delete ok', { id: idNum, userId });
     }
   } catch (e) {
     console.error('syncDocumentDelete error', e);
