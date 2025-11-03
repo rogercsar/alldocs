@@ -211,10 +211,10 @@ export default function ProfileScreen({ navigation }: any) {
                   <Ionicons name='pricetags' size={18} color={'#fff'} style={{ marginRight:6 }} />
                   <Text style={{ color:'#fff', fontWeight: '800' }}>{plan === 'premium' ? 'Gerenciar plano' : 'Ver planos'}</Text>
                 </Pressable>
-+               <Pressable onPress={() => navigation.navigate('Devices')} style={({ pressed }) => ({ borderWidth:2, borderColor: border, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius:10, marginRight: spacing.xs, marginBottom: spacing.xs, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? colors.surface : '#fff' })}>
-+                 <Ionicons name='hardware-chip' size={18} color={primary} style={{ marginRight:6 }} />
-+                 <Text style={{ color: text, fontWeight: '800' }}>Gerenciar dispositivos</Text>
-+               </Pressable>
+                <Pressable onPress={() => navigation.navigate('Devices')} style={({ pressed }) => ({ borderWidth:2, borderColor: border, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius:10, marginRight: spacing.xs, marginBottom: spacing.xs, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? colors.surface : '#fff' })}>
+                  <Ionicons name='hardware-chip' size={18} color={primary} style={{ marginRight:6 }} />
+                  <Text style={{ color: text, fontWeight: '800' }}>Gerenciar dispositivos</Text>
+                </Pressable>
               </View>
 
               <View style={{ height:1, backgroundColor: border, marginVertical: spacing.md }} />
