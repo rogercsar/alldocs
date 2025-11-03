@@ -12,8 +12,8 @@ export default function ProfileScreen({ navigation }: any) {
   const [userId, setUserId] = useState<string>('');
   const [plan, setPlan] = useState<'premium' | 'freemium'>('freemium');
   const [devices, setDevices] = useState<number>(1);
-+ const [deviceLimit, setDeviceLimit] = useState<number | null>(null);
-+ const [isPremiumDevices, setIsPremiumDevices] = useState<boolean>(false);
+  const [deviceLimit, setDeviceLimit] = useState<number | null>(null);
+  const [isPremiumDevices, setIsPremiumDevices] = useState<boolean>(false);
   const [devicesList, setDevicesList] = useState<Array<{ device_id: string; platform?: string; label?: string; last_seen?: string }>>([]);
   const [currentDeviceId, setCurrentDeviceId] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -71,8 +71,8 @@ export default function ProfileScreen({ navigation }: any) {
           if (resCount.ok) {
             const json = await resCount.json();
             if (typeof json?.count === 'number') setDevices(json.count);
-+           if (json && 'limit' in json) setDeviceLimit(json.limit ?? null);
-+           if (json && 'is_premium' in json) setIsPremiumDevices(!!json.is_premium);
+            if (json && 'limit' in json) setDeviceLimit(json.limit ?? null);
+            if (json && 'is_premium' in json) setIsPremiumDevices(!!json.is_premium);
           }
           if (resList.ok) {
             const j2 = await resList.json();
@@ -188,18 +188,17 @@ export default function ProfileScreen({ navigation }: any) {
               <View style={{ flexDirection:'row', alignItems:'center' }}>
                 <Ionicons name='hardware-chip' size={18} color={'#9CA3AF'} style={{ marginRight:8 }} />
                 <Text style={{ color: text, fontWeight: '700' }}>Dispositivos conectados:</Text>
--               <Text style={{ color: text, marginLeft:6 }}>{devices}</Text>
-+               <Text style={{ color: text, marginLeft:6 }}>{devices}{deviceLimit !== null ? ` / ${deviceLimit}` : ''}</Text>
-+             </View>
-+             <View style={{ flexDirection:'row', alignItems:'center', marginTop: spacing.xs }}>
-+               <Ionicons name='information-circle' size={16} color={colors.mutedIcon} style={{ marginRight:6 }} />
-+               <Text style={{ color: mutedText, fontSize: typography.sizes.caption }}>
-+                 {deviceLimit === null
-+                   ? 'Premium: limite de dispositivos ilimitado.'
-+                   : (isPremiumDevices
-+                       ? `Premium: limite de ${deviceLimit} dispositivos.`
-+                       : `Gratuito: limite de ${deviceLimit} dispositivos.`)}
-+               </Text>
+                <Text style={{ color: text, marginLeft:6 }}>{devices}{deviceLimit !== null ? ` / ${deviceLimit}` : ''}</Text>
+              </View>
+              <View style={{ flexDirection:'row', alignItems:'center', marginTop: spacing.xs }}>
+                <Ionicons name='information-circle' size={16} color={colors.mutedIcon} style={{ marginRight:6 }} />
+                <Text style={{ color: mutedText, fontSize: typography.sizes.caption }}>
+                  {deviceLimit === null
+                    ? 'Premium: limite de dispositivos ilimitado.'
+                    : (isPremiumDevices
+                        ? `Premium: limite de ${deviceLimit} dispositivos.`
+                        : `Gratuito: limite de ${deviceLimit} dispositivos.`)}
+                </Text>
               </View>
               <View style={{ height: spacing.md }} />
 
