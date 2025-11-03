@@ -17,6 +17,7 @@ import { supabase } from './src/supabase';
 import { registerDeviceForUser, getDeviceLockEnabled } from './src/utils/device';
 import { ToastProvider } from './src/components/Toast';
 import { configureNotificationHandler, ensureNotificationPermission } from './src/utils/notifications';
+import DevicesScreen from './src/screens/DevicesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -93,6 +94,9 @@ export default function App() {
             <Stack.Screen name="Plans" options={{ title: 'Planos' }}>
               {(props) => <PlansScreen navigation={props.navigation} />}
             </Stack.Screen>
++           <Stack.Screen name="Devices" options={{ title: 'Dispositivos' }}>
++             {(props) => <DevicesScreen navigation={props.navigation} />}
++           </Stack.Screen>
           </>
         ) : null}
 
