@@ -97,6 +97,12 @@ const allowsNativeDriver = Platform.OS !== 'web';
     setMenuFor(null);
     initDb();
     const [items, cnt] = await Promise.all([getDocuments(), countDocuments()]);
+    
+    console.log('[dashboard] load start', {
+      userId,
+      base: process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : ''),
+      localCount: items.length,
+    });
 
     // Tenta sincronizar pendentes (criados/atualizados no web sem login)
     try {
@@ -115,6 +121,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
 
     const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
     let isPremium = false;
+    let usedRemote = false;
     try {
       if (base && userId && userId !== 'anonymous') {
         const res = await fetch(`${base}/.netlify/functions/get-user-status?userId=${userId}`);
@@ -128,6 +135,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
     // Tenta carregar documentos remotos do Supabase
     try {
       if (userId && userId !== 'anonymous') {
+        console.log('[dashboard] supabase query start');
         const { data: remote, error } = await supabase
           .from('documents')
           .select('app_id,name,number,front_path,back_path,updated_at')
@@ -158,6 +166,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
         }
 
         if (rows && rows.length > 0) {
+          console.log('[dashboard] remote rows', rows.length);
           const mapped: DocumentItem[] = await Promise.all(
             rows.map(async (d: any) => {
               let front = '';
@@ -234,16 +243,23 @@ const allowsNativeDriver = Platform.OS !== 'web';
             byKey.set(targetKey, mergedItem);
           }
           const merged = Array.from(byKey.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          console.log('[dashboard] set remote docs', merged.length);
           setDocs(merged);
+          usedRemote = true;
         }
       }
     } catch (e) {
       console.warn('[dashboard] supabase load error', e);
     }
 
-        // Fallback para documentos locais
-        setDocs(items);
-        setLimitReached(!isPremium && cnt >= 4);
+    // Fallback para documentos locais (apenas se remoto não foi usado)
+    if (!usedRemote) {
+      console.log('[dashboard] using local items', items.length);
+      setDocs(items);
+    } else {
+      console.log('[dashboard] remote docs already set, skipping local fallback');
+    }
+    setLimitReached(!isPremium && cnt >= 4);
       }, [userId]);
 
       useEffect(() => {
