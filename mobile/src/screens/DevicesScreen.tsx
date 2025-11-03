@@ -125,7 +125,7 @@ export default function DevicesScreen({ navigation }: any) {
                 <Ionicons name='information-circle' size={16} color={colors.mutedIcon} style={{ marginRight:6 }} />
                 <Text style={{ color: mutedText, fontSize: typography.sizes.caption }}>
                   {limit === null
-                    ? 'Premium: limite de dispositivos ilimitado.'
+                    ? 'Premium: limite de 5 dispositivos.'
                     : (isPremium
                         ? `Premium: limite de ${limit} dispositivos.`
                         : `Gratuito: limite de ${limit} dispositivos.`)}

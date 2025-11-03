@@ -194,7 +194,7 @@ export default function ProfileScreen({ navigation }: any) {
                 <Ionicons name='information-circle' size={16} color={colors.mutedIcon} style={{ marginRight:6 }} />
                 <Text style={{ color: mutedText, fontSize: typography.sizes.caption }}>
                   {deviceLimit === null
-                    ? 'Premium: limite de dispositivos ilimitado.'
+                    ? 'Premium: limite de 5 dispositivos.'
                     : (isPremiumDevices
                         ? `Premium: limite de ${deviceLimit} dispositivos.`
                         : `Gratuito: limite de ${deviceLimit} dispositivos.`)}
