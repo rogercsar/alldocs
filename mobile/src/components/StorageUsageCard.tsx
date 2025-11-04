@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 function humanBytes(bytes: number) {
   if (!bytes && bytes !== 0) return '?';
@@ -50,6 +51,8 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
     if (remaining < (quota as number) / 2) return '#D97706'; // amarelo
     return '#22C55E'; // verde
   })();
+  const isRed = remaining !== null && remaining <= dangerThreshold;
+  const isYellow = remaining !== null && quota !== null && !isRed && remaining < (quota as number) / 2;
 
   const handlePressBar = () => {
     if (!onOpenUpgrade) return;
@@ -69,6 +72,9 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
             <View style={{ width:80, height:8, backgroundColor:'#E5E7EB', borderRadius:9999, overflow:'hidden', marginRight:8 }}>
               <View style={{ width: pctRemaining !== null ? `${pctRemaining}%` : '0%', height:8, backgroundColor: color }} />
             </View>
+            {(isRed || isYellow) ? (
+              <Ionicons name={isRed ? 'alert-circle' : 'alert-circle-outline'} size={14} color={color} style={{ marginRight:4 }} />
+            ) : null}
             <Text style={{ color:'#374151' }}>{remaining !== null ? `${humanBytes(remaining)}` : '—'}</Text>
           </View>
         )}
@@ -96,7 +102,12 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
       <View style={{ height:10, marginTop:12, backgroundColor:'#F3F4F6', borderRadius:6, overflow:'hidden' }}>
         <View style={{ height:10, width: pctRemaining !== null ? `${pctRemaining}%` : '0%', backgroundColor: color }} />
       </View>
-      <Text style={{ marginTop:6, color:'#374151', textAlign:'center' }}>{remaining !== null ? `${humanBytes(remaining)} restante` : ''}</Text>
+      <View style={{ marginTop:6, flexDirection:'row', alignItems:'center', justifyContent:'center' }}>
+        {(isRed || isYellow) ? (
+          <Ionicons name={isRed ? 'alert-circle' : 'alert-circle-outline'} size={14} color={color} style={{ marginRight:6 }} />
+        ) : null}
+        <Text style={{ color:'#374151' }}>{remaining !== null ? `${humanBytes(remaining)} restante` : ''}</Text>
+      </View>
 
       <View style={{ flexDirection:'row', justifyContent:'space-between', marginTop:8 }}>
         <Text style={{ color:'#6B7280' }}>{pctRemaining !== null ? `${pctRemaining}% restante` : ''}</Text>

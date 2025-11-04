@@ -154,6 +154,7 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const { width } = useWindowDimensions();
   const showBrandText = Platform.OS !== 'web' || width >= 420;
   const [isPremiumPlan, setIsPremiumPlan] = useState<boolean>(false);
+  const { showToast } = useToast();
   const menuScale = useRef(new Animated.Value(0.95)).current;
   const menuOpacity = useRef(new Animated.Value(0)).current;
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
@@ -870,6 +871,47 @@ const allowsNativeDriver = Platform.OS !== 'web';
       }
 
       const [notificationsOpen, setNotificationsOpen] = useState(false);
+      const prevStorageLevelRef = useRef<'green' | 'yellow' | 'red' | null>(null);
+      useEffect(() => {
+        if (storageRemaining === null || storageQuota === null || !userId || userId === 'anonymous') return;
+        const dangerThreshold = 1 * 1024 * 1024 * 1024; // 1GB (keep in sync with alerts)
+        const isRed = storageRemaining <= dangerThreshold;
+        const isYellow = !isRed && storageRemaining < storageQuota / 2;
+        const level: 'green' | 'yellow' | 'red' = isRed ? 'red' : (isYellow ? 'yellow' : 'green');
+        if (prevStorageLevelRef.current !== level) {
+          prevStorageLevelRef.current = level;
+          if (level === 'red' || level === 'yellow') {
+            (async () => {
+              const key = `${level === 'red' ? 'storageAlertRedShown' : 'storageAlertYellowShown'}:${userId}`;
+              let already = false;
+              try {
+                const SecureStore = await import('expo-secure-store');
+                const v = await SecureStore.getItemAsync(key);
+                already = v === 'true';
+              } catch {
+                try {
+                  if (typeof window !== 'undefined' && (window as any).localStorage) {
+                    already = ((window as any).localStorage.getItem(key) === 'true');
+                  }
+                } catch {}
+              }
+              if (!already) {
+                showToast(level === 'red' ? 'Armazenamento crítico: menos de 1GB restante.' : 'Armazenamento em atenção: menos da metade restante.', { type: level === 'red' ? 'error' : 'info' });
+                try {
+                  const SecureStore = await import('expo-secure-store');
+                  await SecureStore.setItemAsync(key, 'true');
+                } catch {
+                  try {
+                    if (typeof window !== 'undefined' && (window as any).localStorage) {
+                      (window as any).localStorage.setItem(key, 'true');
+                    }
+                  } catch {}
+                }
+              }
+            })();
+          }
+        }
+      }, [storageRemaining, storageQuota, userId, showToast]);
 
       useLayoutEffect(() => {
         navigation.setOptions({
@@ -977,11 +1019,11 @@ const allowsNativeDriver = Platform.OS !== 'web';
       </>
   )}
 
-          {notifMessages.length > 0 && (
+          {notifItems.length > 0 && (
             <TouchableOpacity onPress={() => setNotificationsOpen(true)} style={{ marginHorizontal:16, marginBottom:8, paddingVertical:8, paddingHorizontal:12, backgroundColor:'#FEF9C3', borderRadius:8, borderWidth:1, borderColor:'#FDE68A' }}>
               <View style={{ flexDirection:'row', alignItems:'center' }}>
                 <Ionicons name='alert-circle-outline' size={18} color={'#92400E'} style={{ marginRight:6 }} />
-                <Text style={{ color:'#92400E' }}>Você tem {notifMessages.length} notificação(ões). Toque para ver.</Text>
+                <Text style={{ color:'#92400E' }}>Você tem {notifItems.length} notificação(ões). Toque para ver.</Text>
               </View>
             </TouchableOpacity>
           )}
