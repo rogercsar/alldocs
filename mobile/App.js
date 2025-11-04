@@ -93,7 +93,7 @@ export default function App() {
   return (
     <ToastProvider>
       <NavigationContainer ref={navRef}>
-        <Stack.Navigator initialRouteName={isAnonymous ? 'Landing' : 'Dashboard'}>
+        <Stack.Navigator initialRouteName={isAnonymous ? 'Landing' : 'Dashboard'} screenOptions={{ headerTitleStyle: { fontFamily: 'Nunito_600SemiBold' } }}>
         {isAnonymous ? (
           <>
             <Stack.Screen name="Landing" options={{ headerShown: false }}>

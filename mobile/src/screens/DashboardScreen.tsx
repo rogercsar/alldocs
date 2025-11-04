@@ -558,18 +558,23 @@ const allowsNativeDriver = Platform.OS !== 'web';
               {logoError ? (
                 <>
                   <Ionicons name='document-text' size={28} color={colors.text} />
-                  <Text style={{ marginLeft: 8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: 'Inter' }}>EVDocs</Text>
+                  <Text style={{ marginLeft: 8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: Platform.OS === 'web' ? undefined : 'Nunito_700Bold' }}>EVDocs</Text>
                 </>
               ) : (
                 <>
                   <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:70, height:70 }} />
-                  <Text style={{ marginLeft: 8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: 'Inter' }}>EVDocs</Text>
+                  <Text style={{ marginLeft:  8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: Platform.OS === 'web' ? undefined : 'Nunito_700Bold' }}>EVDocs</Text>
                 </>
               )}
             </View>
           ),
           headerRight: () => (
             <View style={{ flexDirection:'row', alignItems:'center' }}>
+              {userId && userId !== 'anonymous' ? (
+                <View style={{ marginRight: 8 }}>
+                  <StorageUsageCard userId={userId} onOpenUpgrade={(tab) => navigation.navigate('Upgrade', { initialTab: tab })} variant="header" />
+                </View>
+              ) : null}
               <View style={{ position:'relative', paddingVertical:6, paddingHorizontal:10, marginRight: 6 }}>
                 <TouchableOpacity onPress={() => setNotificationsOpen(true)}>
                   <Ionicons name={notifMessages.length ? 'notifications' : 'notifications-outline'} size={22} color={colors.text} />
@@ -839,6 +844,11 @@ const allowsNativeDriver = Platform.OS !== 'web';
           ),
           headerRight: () => (
             <View style={{ flexDirection:'row', alignItems:'center' }}>
+              {userId && userId !== 'anonymous' ? (
+                <View style={{ marginRight: 8 }}>
+                  <StorageUsageCard userId={userId} onOpenUpgrade={(tab) => navigation.navigate('Upgrade', { initialTab: tab })} variant="header" />
+                </View>
+              ) : null}
               <View style={{ position:'relative', paddingVertical:6, paddingHorizontal:10, marginRight: 6 }}>
                 <TouchableOpacity onPress={() => setNotificationsOpen(true)}>
                   <Ionicons name={notifMessages.length ? 'notifications' : 'notifications-outline'} size={22} color={colors.text} />
