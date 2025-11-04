@@ -113,10 +113,13 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
         const isCNH = type === 'CNH';
         const isRG = type === 'RG';
         const isEleitor = type === 'Título de Eleitor';
-        const needsMeta = !meta.issueDate || !meta.expiryDate || !meta.issuingState || !meta.issuingCity || !meta.issuingAuthority;
+        // Para RG, não considerar expiryDate na necessidade de buscar metadados
+        const needsMetaCNH = !meta.issueDate || !meta.expiryDate || !meta.issuingState || !meta.issuingCity || !meta.issuingAuthority;
+        const needsMetaRG = !meta.issueDate || !meta.issuingState || !meta.issuingCity || !meta.issuingAuthority;
         const needsEleitor = !eleitor.electorZone || !eleitor.electorSection;
         const hasRemoteId = !!(document as any).appId;
-        if (isCNH && needsMeta && hasRemoteId && userId) {
+        const hasUserSession = !!userId && userId !== 'anonymous';
+        if (isCNH && needsMetaCNH && hasRemoteId && hasUserSession) {
           const { data: rows } = await supabase
             .from('doc_cnh')
             .select('issue_date,expiry_date,issuing_state,issuing_city,issuing_authority')
@@ -134,7 +137,7 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
             }));
           }
         }
-        if (isRG && needsMeta && hasRemoteId && userId) {
+        if (isRG && needsMetaRG && hasRemoteId && hasUserSession) {
           const { data: rows } = await supabase
             .from('doc_rg')
             .select('issue_date,issuing_state,issuing_city,issuing_authority')
@@ -153,7 +156,7 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
             }));
           }
         }
-        if (isEleitor && needsEleitor && hasRemoteId && userId) {
+        if (isEleitor && needsEleitor && hasRemoteId && hasUserSession) {
           const { data: rows } = await supabase
             .from('doc_eleitor')
             .select('elector_zone,elector_section')
