@@ -11,6 +11,52 @@ exports.handler = async function(event) {
     return { statusCode: 200, headers: corsHeaders() };
   }
   try {
+    // Suporte GET (single) e POST (batch)
+    if (event.httpMethod === 'POST') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const userId = body.userId;
+      const appIds = Array.isArray(body.appIds) ? body.appIds.filter((x) => typeof x === 'number' || typeof x === 'string').map((x) => parseInt(x, 10)) : [];
+      const ttlParam = body.ttl ? parseInt(body.ttl, 10) : 3600;
+      const expiresSeconds = Math.min(Math.max(ttlParam, 300), 7 * 24 * 60 * 60);
+      if (!userId || appIds.length === 0) return json({ error: 'Missing userId or appIds' }, 400);
+
+      // Busca todos os paths de uma vez
+      const { data, error } = await supabase
+        .from('documents')
+        .select('app_id, front_path, back_path')
+        .eq('user_id', userId)
+        .in('app_id', appIds);
+      if (error) throw error;
+
+      const map = {};
+      const tasks = [];
+      for (const row of (data || [])) {
+        const appId = row.app_id;
+        map[appId] = { frontSignedUrl: null, backSignedUrl: null };
+        if (row.front_path) {
+          tasks.push((async () => {
+            const { data: signedFront, error: signErrF } = await supabase.storage
+              .from(SUPABASE_BUCKET)
+              .createSignedUrl(row.front_path, expiresSeconds);
+            if (signErrF) throw signErrF;
+            map[appId].frontSignedUrl = signedFront?.signedUrl || null;
+          })());
+        }
+        if (row.back_path) {
+          tasks.push((async () => {
+            const { data: signedBack, error: signErrB } = await supabase.storage
+              .from(SUPABASE_BUCKET)
+              .createSignedUrl(row.back_path, expiresSeconds);
+            if (signErrB) throw signErrB;
+            map[appId].backSignedUrl = signedBack?.signedUrl || null;
+          })());
+        }
+      }
+      await Promise.all(tasks);
+      return json(map);
+    }
+
+    // GET: single documento
     const params = event.queryStringParameters || {};
     const userId = params.userId;
     const appId = params.appId ? parseInt(params.appId, 10) : undefined;
@@ -65,6 +111,6 @@ function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
   };
 }

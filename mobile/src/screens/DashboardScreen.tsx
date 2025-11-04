@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useLayoutEffect, useRef, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated, Modal, TextInput, ScrollView, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated, Modal, TextInput, ScrollView, Platform, Linking } from 'react-native';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { getDocuments, initDb, countDocuments, deleteDocument, updateDocument, addDocument } from '../storage/db';
 import { syncDocumentDelete, syncDocumentAddOrUpdate } from '../storage/sync';
@@ -8,9 +8,10 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import ShareSheet from '../components/ShareSheet';
+import * as Clipboard from 'expo-clipboard';
 import { useToast } from '../components/Toast';
 import { scheduleExpiryNotifications } from '../utils/notifications';
-import { buildExpiryAlerts, filterByExpiry } from '../utils/expiry';
+import { buildExpiryAlerts, filterByExpiry, isExpired, isExpiringSoon, parseExpiryDate } from '../utils/expiry';
 
 const primaryColor = colors.brandPrimary;
 const bgColor = colors.bg;
@@ -126,15 +127,14 @@ function accentColorForCategory(cat?: string): string | null {
 
 // Fundo do card por categoria (tons suaves)
 function accentBgForCategory(cat?: string): string {
-  switch (cat) {
-    case 'Financeiro': return '#FEE2E2'; // vermelho claro
-    case 'Saúde': return '#ECFDF5';      // verde muito claro
-    case 'Transporte': return '#DCFCE7'; // verde claro
-    case 'Trabalho': return '#FEF3C7';   // amarelo claro
-    case 'Estudo': return '#F5F3FF';     // roxo claro
-    case 'Pessoais': return '#EFF6FF';   // azul claro
-    default: return '#FFFFFF';           // fallback
-  }
+  const c = (cat || '').toLowerCase();
+  if (c.includes('financeiro')) return 'rgba(239, 68, 68, 0.10)';   // vermelho suave
+  if (c.includes('saúde')) return 'rgba(16, 185, 129, 0.10)';       // verde suave
+  if (c.includes('transporte')) return 'rgba(34, 197, 94, 0.12)';   // verde médio
+  if (c.includes('trabalho')) return 'rgba(245, 158, 11, 0.12)';    // amarelo suave
+  if (c.includes('estudo')) return 'rgba(139, 92, 246, 0.10)';      // roxo suave
+  if (c.includes('pessoais')) return 'rgba(59, 130, 246, 0.10)';    // azul suave
+  return 'rgba(158, 158, 158, 0.08)';                               // cinza neutro
 }
 
 export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; onLogout?: () => void; userId: string; }) {
@@ -163,6 +163,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
   const [expiryFilter, setExpiryFilter] = useState<'all' | 'expired' | 'soon'>('all');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [loadingDocs, setLoadingDocs] = useState(false);
 
   const filteredDocs = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -182,6 +183,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
   const load = useCallback(async () => {
     setMenuFor(null);
     initDb();
+    setLoadingDocs(true);
     const [items, cnt] = await Promise.all([getDocuments(), countDocuments()]);
     let docCount = cnt;
     
@@ -223,51 +225,163 @@ const allowsNativeDriver = Platform.OS !== 'web';
     try {
       if (userId && userId !== 'anonymous') {
         console.log('[dashboard] supabase query start');
-        const { data: remote, error } = await supabase
-          .from('documents')
-          .select('app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority')
-          .eq('user_id', userId)
-          .order('updated_at', { ascending: false });
+        const selectUnified = 'app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority,elector_zone,elector_section,card_subtype,card_brand,bank,cvc';
+        const selectDocs = 'app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority';
 
-        let rows = remote;
-        if ((error && error.message && /api key|apikey/i.test(error.message)) || (!rows || rows.length === 0)) {
-          // Fallback robusto: chamada direta PostgREST com apikey na URL
-          if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-            const qs = new URLSearchParams({
-              select: 'app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority',
-              order: 'updated_at.desc',
-            });
-            const restUrl = `${SUPABASE_URL}/rest/v1/documents?${qs.toString()}&user_id=eq.${encodeURIComponent(userId)}&apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}`;
-            const { data: sessionData } = await supabase.auth.getSession();
-            const accessToken = (sessionData as any)?.session?.access_token as string | undefined;
-            const headers: any = { apikey: SUPABASE_ANON_KEY };
-            if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-            const r = await fetch(restUrl, { headers });
-            if (r.ok) {
-              rows = await r.json();
-            } else {
-              const body = await r.text();
-              console.warn('[rest fallback] status', r.status, body);
+        let rows: any = null;
+         let fromUnified = false;
+ 
+         // Tenta view unificada primeiro
+         const { data: vrows, error: verr } = await supabase
+           .from('documents_unified_view')
+           .select(selectUnified)
+           .eq('user_id', userId)
+           .order('updated_at', { ascending: false });
+ 
+         if (!verr && vrows && vrows.length) {
+           rows = vrows;
+           fromUnified = true;
+         } else {
+          const { data: remote, error } = await supabase
+            .from('documents')
+            .select(selectDocs)
+            .eq('user_id', userId)
+            .order('updated_at', { ascending: false });
+          rows = remote;
+          if ((error && error.message && /api key|apikey/i.test(error.message)) || (!rows || rows.length === 0)) {
+            // Fallback robusto: tenta REST com view e depois com a tabela
+            if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+              const { data: sessionData } = await supabase.auth.getSession();
+              const accessToken = (sessionData as any)?.session?.access_token as string | undefined;
+              const headers: any = { apikey: SUPABASE_ANON_KEY };
+              if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+              const qsUnified = new URLSearchParams({
+                select: selectUnified,
+                order: 'updated_at.desc',
+              });
+              let r = await fetch(`${SUPABASE_URL}/rest/v1/documents_unified_view?${qsUnified.toString()}&user_id=eq.${encodeURIComponent(userId)}&apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}`, { headers });
+              if (r.ok) {
+                rows = await r.json();
+              } else {
+                const qsDocs = new URLSearchParams({
+                  select: selectDocs,
+                  order: 'updated_at.desc',
+                });
+                r = await fetch(`${SUPABASE_URL}/rest/v1/documents?${qsDocs.toString()}&user_id=eq.${encodeURIComponent(userId)}&apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}`, { headers });
+                if (r.ok) {
+                  rows = await r.json();
+                } else {
+                  const body = await r.text();
+                  console.warn('[rest fallback] status', r.status, body);
+                }
+              }
             }
           }
         }
 
         if (rows && rows.length > 0) {
           console.log('[dashboard] remote rows', rows.length);
+          // Consulta em lote dos metadados de doc_eleitor para todos os app_ids relevantes
+          const eleitorAppIds = rows
+            .filter((d: any) => ((d.type || '') as string).toLowerCase().includes('eleitor'))
+            .map((d: any) => d.app_id);
+          let eleMap = new Map<number, { zone?: string; section?: string }>();
+          if (eleitorAppIds.length > 0) {
+            try {
+              const { data: eleRows } = await supabase
+                .from('doc_eleitor')
+                .select('app_id,elector_zone,elector_section')
+                .eq('user_id', userId)
+                .in('app_id', eleitorAppIds);
+              if (eleRows && eleRows.length) {
+                for (const e of eleRows as any[]) {
+                  eleMap.set((e as any).app_id, { zone: (e as any).elector_zone, section: (e as any).elector_section });
+                }
+              }
+            } catch {}
+          }
+
+          // Consulta em lote dos metadados de RG
+          const rgAppIds = rows
+            .filter((d: any) => ((d.type || '') as string).toLowerCase().includes('rg'))
+            .map((d: any) => d.app_id);
+          let rgMap = new Map<number, { issue_date?: any; issuing_state?: any; issuing_city?: any; issuing_authority?: any }>();
+          if (rgAppIds.length > 0) {
+            try {
+              const { data: rgRows } = await supabase
+                .from('doc_rg')
+                .select('app_id,issue_date,issuing_state,issuing_city,issuing_authority')
+                .eq('user_id', userId)
+                .in('app_id', rgAppIds);
+              if (rgRows && rgRows.length) {
+                for (const r of rgRows as any[]) {
+                  rgMap.set((r as any).app_id, {
+                    issue_date: (r as any).issue_date,
+                    issuing_state: (r as any).issuing_state,
+                    issuing_city: (r as any).issuing_city,
+                    issuing_authority: (r as any).issuing_authority,
+                  });
+                }
+              }
+            } catch {}
+          }
+
+          // Consulta em lote dos metadados de CNH
+          const cnhAppIds = rows
+            .filter((d: any) => ((d.type || '') as string).toLowerCase().includes('cnh'))
+            .map((d: any) => d.app_id);
+          let cnhMap = new Map<number, { issue_date?: any; expiry_date?: any; issuing_state?: any; issuing_city?: any; issuing_authority?: any }>();
+          if (cnhAppIds.length > 0) {
+            try {
+              const { data: cnhRows } = await supabase
+                .from('doc_cnh')
+                .select('app_id,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority')
+                .eq('user_id', userId)
+                .in('app_id', cnhAppIds);
+              if (cnhRows && cnhRows.length) {
+                for (const c of cnhRows as any[]) {
+                  cnhMap.set((c as any).app_id, {
+                    issue_date: (c as any).issue_date,
+                    expiry_date: (c as any).expiry_date,
+                    issuing_state: (c as any).issuing_state,
+                    issuing_city: (c as any).issuing_city,
+                    issuing_authority: (c as any).issuing_authority,
+                  });
+                }
+              }
+            } catch {}
+          }
+
+          // Busca URLs assinadas em lote para todos os app_ids
+          let signedMap: Record<number, { frontSignedUrl?: string | null; backSignedUrl?: string | null }> = {};
+          try {
+            const appIds = Array.from(new Set(rows.map((d: any) => d.app_id).filter((x: any) => x != null)));
+            if (base && userId && appIds.length > 0) {
+              const r = await fetch(`${base}/.netlify/functions/signed-urls`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, appIds }),
+              });
+              if (r.ok) {
+                signedMap = await r.json();
+              } else {
+                const pairs = await Promise.all(appIds.map(async (id: number) => {
+                  try {
+                    const rr = await fetch(`${base}/.netlify/functions/signed-urls?userId=${encodeURIComponent(userId)}&appId=${encodeURIComponent(id)}`);
+                    if (rr.ok) return [id, await rr.json()] as const;
+                  } catch {}
+                  return [id, { frontSignedUrl: '', backSignedUrl: '' }] as const;
+                }));
+                signedMap = Object.fromEntries(pairs);
+              }
+            }
+          } catch {}
+
           const mapped: DocumentItem[] = await Promise.all(
             rows.map(async (d: any) => {
-              let front = '';
-              let back = '';
-              if (base) {
-                try {
-                  const r = await fetch(`${base}/.netlify/functions/signed-urls?userId=${userId}&appId=${d.app_id}`);
-                  if (r.ok) {
-                    const j = await r.json();
-                    front = j.frontSignedUrl || '';
-                    back = j.backSignedUrl || '';
-                  }
-                } catch {}
-              }
+              const s = (signedMap as any)[d.app_id] || {};
+              const front = s.frontSignedUrl || '';
+              const back = s.backSignedUrl || '';
               const obj: any = {
                 appId: d.app_id,
                 name: d.name,
@@ -289,85 +403,32 @@ const allowsNativeDriver = Platform.OS !== 'web';
                 synced: 1,
                 updatedAt: d.updated_at ? new Date(d.updated_at).getTime() : undefined,
               } as DocumentItem;
-              // Hidratar metadados do Título de Eleitor via sub-tabela quando necessário
-              const isEleitor = ((obj.type || '') as string).toLowerCase().includes('eleitor');
-              if (isEleitor && userId) {
-                try {
-                  const { data: eleRows } = await supabase
-                    .from('doc_eleitor')
-                    .select('elector_zone,elector_section')
-                    .eq('user_id', userId)
-                    .eq('app_id', d.app_id)
-                    .limit(1);
-                  const e = eleRows && eleRows[0];
-                  if (e) {
-                    if (obj.electorZone == null) obj.electorZone = (e as any).elector_zone;
-                    if (obj.electorSection == null) obj.electorSection = (e as any).elector_section;
-                  }
-                } catch {}
+              // Hidratação em lote: usar mapas lidos de doc_rg e doc_cnh
+              const rg = rgMap.get(d.app_id);
+              if (rg) {
+                if (obj.issueDate == null && rg.issue_date != null) obj.issueDate = rg.issue_date as any;
+                if (obj.issuingState == null && rg.issuing_state != null) obj.issuingState = rg.issuing_state as any;
+                if (obj.issuingCity == null && rg.issuing_city != null) obj.issuingCity = rg.issuing_city as any;
+                if (obj.issuingAuthority == null && rg.issuing_authority != null) obj.issuingAuthority = rg.issuing_authority as any;
+              }
+              const cnh = cnhMap.get(d.app_id);
+              if (cnh) {
+                if (obj.issueDate == null && cnh.issue_date != null) obj.issueDate = cnh.issue_date as any;
+                if (obj.expiryDate == null && cnh.expiry_date != null) obj.expiryDate = cnh.expiry_date as any;
+                if (obj.issuingState == null && cnh.issuing_state != null) obj.issuingState = cnh.issuing_state as any;
+                if (obj.issuingCity == null && cnh.issuing_city != null) obj.issuingCity = cnh.issuing_city as any;
+                if (obj.issuingAuthority == null && cnh.issuing_authority != null) obj.issuingAuthority = cnh.issuing_authority as any;
+              }
+              // Hidratação em lote: usar mapa lido de doc_eleitor
+              const e = eleMap.get(d.app_id);
+              if (e) {
+                if (obj.electorZone == null) obj.electorZone = e.zone as any;
+                if (obj.electorSection == null) obj.electorSection = e.section as any;
               }
               return obj as DocumentItem;
             })
           );
-          const mappedA: DocumentItem[] = await Promise.all(
-            rows.map(async (d: any) => {
-              let front = '';
-              let back = '';
-              if (base) {
-                try {
-                  const r = await fetch(`${base}/.netlify/functions/signed-urls?userId=${userId}&appId=${d.app_id}`);
-                  if (r.ok) {
-                    const j = await r.json();
-                    front = j.frontSignedUrl || '';
-                    back = j.backSignedUrl || '';
-                  }
-                } catch {}
-              }
-              const item: any = {
-                appId: d.app_id,
-                name: d.name,
-                number: d.number,
-                frontImageUri: front,
-                backImageUri: back,
-                synced: 1,
-                updatedAt: d.updated_at ? new Date(d.updated_at).getTime() : undefined,
-              };
-              if (d.type != null) item.type = d.type;
-              if (d.issue_date != null) item.issueDate = d.issue_date;
-              if (d.expiry_date != null) item.expiryDate = d.expiry_date;
-              if (d.issuing_state != null) item.issuingState = d.issuing_state;
-              if (d.issuing_city != null) item.issuingCity = d.issuing_city;
-              if (d.issuing_authority != null) item.issuingAuthority = d.issuing_authority;
-              if (d.elector_zone != null) item.electorZone = d.elector_zone;
-              if (d.elector_section != null) item.electorSection = d.elector_section;
-              if (d.card_subtype != null) item.cardSubtype = d.card_subtype;
-              if (d.bank != null) item.bank = d.bank;
-              if (d.cvc != null) item.cvc = d.cvc;
-              if (d.card_brand != null) item.cardBrand = d.card_brand;
-              // RG: hidratar metadados da sub-tabela se faltarem
-              if ((item.type || '').toLowerCase().includes('rg') && userId) {
-                const needRgMeta = (item.issueDate == null) || (item.issuingState == null) || (item.issuingCity == null) || (item.issuingAuthority == null);
-                if (needRgMeta) {
-                  try {
-                    const { data: rgRows } = await supabase
-                      .from('doc_rg')
-                      .select('issue_date,issuing_state,issuing_city,issuing_authority')
-                      .eq('user_id', userId)
-                      .eq('app_id', d.app_id)
-                      .limit(1);
-                    const r = rgRows && rgRows[0];
-                    if (r) {
-                      if (r.issue_date != null && item.issueDate == null) item.issueDate = r.issue_date;
-                      if (r.issuing_state != null && item.issuingState == null) item.issuingState = r.issuing_state;
-                      if (r.issuing_city != null && item.issuingCity == null) item.issuingCity = r.issuing_city;
-                      if (r.issuing_authority != null && item.issuingAuthority == null) item.issuingAuthority = r.issuing_authority;
-                    }
-                  } catch {}
-                }
-              }
-              return item as DocumentItem;
-            })
-          );
+
           const safeId = (v: any) => {
             const MAX = 2147483647;
             if (typeof v === 'number') return (v > 0 && v <= MAX) ? v : (Math.abs(v) % MAX) || 1;
@@ -431,6 +492,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
       console.log('[dashboard] remote docs already set, skipping local fallback');
     }
     setLimitReached(!isPremium && docCount >= 4);
+    setLoadingDocs(false);
       }, [userId]);
 
       useEffect(() => {
@@ -528,42 +590,48 @@ const allowsNativeDriver = Platform.OS !== 'web';
         }
       };
 
-      const onDelete = useCallback(async (doc: DocumentItem) => {
-        try {
-          const itemKey = keyForItem(doc);
-          console.log('[dashboard] delete click', { key: itemKey, appId: (doc as any).appId, name: doc.name, number: doc.number });
-      
-          // Fecha o menu imediatamente
-          setMenuFor(null);
-      
-          // Remoção otimista do estado atual
-          setDocs((prev) => prev.filter((d) => keyForItem(d) !== itemKey));
-      
-          // Remoção local
-          const localDocs = await getDocuments().catch(() => []);
-          const localMatch = localDocs.find((d: any) => keyForItem(d) === itemKey);
-          if (localMatch && (localMatch as any).id) {
-            await deleteDocument((localMatch as any).id).catch((e) => console.error('[dashboard] local delete error', e));
-          }
-      
-          // Remoção remota
-          const userId = auth?.userId;
-          const canSync = !!userId && userId !== 'anonymous' && /^[0-9a-f-]{36}$/i.test(userId);
-          if (canSync) {
-          const forSync = (doc as any).appId ?? (localMatch as any)?.id ?? doc.number ?? doc.name ?? itemKey;
-          await syncDocumentDelete(forSync, userId).catch((e) => console.error('[dashboard] remote delete error', e));
-          } else {
-            console.log('[dashboard] skip remote delete: invalid userId');
-          }
-      
-          // Recarrega em background para refletir estado do servidor
-          load();
-          showToast('Documento excluído.');
-        } catch (e) {
-          console.error('[dashboard] onDelete error', e);
-          showToast('Erro ao excluir documento.');
-        }
+      const onDelete = useCallback((doc: DocumentItem) => {
+        const name = doc.name || 'Documento';
+        Alert.alert(
+          'Excluir documento',
+          `Tem certeza que deseja excluir "${name}"?`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Excluir',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  const itemKey = keyForItem(doc);
+                  console.log('[dashboard] delete confirm', { key: itemKey, appId: (doc as any).appId, name: doc.name, number: doc.number });
+                  setMenuFor(null);
+                  setDocs((prev) => prev.filter((d) => keyForItem(d) !== itemKey));
+                  const localDocs = await getDocuments().catch(() => []);
+                  const localMatch = localDocs.find((d: any) => keyForItem(d) === itemKey);
+                  if (localMatch && (localMatch as any).id) {
+                    await deleteDocument((localMatch as any).id).catch((e) => console.error('[dashboard] local delete error', e));
+                  }
+                  const userId = auth?.userId;
+                  const canSync = !!userId && userId !== 'anonymous' && /^[0-9a-f-]{36}$/i.test(userId);
+                  if (canSync) {
+                    const forSync = (doc as any).appId ?? (localMatch as any)?.id ?? doc.number ?? doc.name ?? itemKey;
+                    await syncDocumentDelete(forSync, userId).catch((e) => console.error('[dashboard] remote delete error', e));
+                  } else {
+                    console.log('[dashboard] skip remote delete: invalid userId');
+                  }
+                  load();
+                  showToast('Documento excluído.', { type: 'success' });
+                } catch (e) {
+                  console.error('[dashboard] onDelete error', e);
+                  showToast('Erro ao excluir documento.', { type: 'error' });
+                }
+              },
+            },
+          ]
+        );
       }, [userId, load]);
+      const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+       const [focusedKey, setFocusedKey] = useState<string | null>(null);
       const renderItem = ({ item }: { item: DocumentItem }) => {
         const icon = iconForType(item.type);
         const hasId = typeof item.id === 'number';
@@ -571,7 +639,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
         const isOpen = menuFor === itemKey;
         const accentBg = accentBgForCategory(displayCategory(item));
         return (
-          <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor: accentBg, borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation: isOpen ? 12 : 2, zIndex: isOpen ? 1000 : 0, overflow:'visible' }}>
+          <Pressable onPress={() => onOpen(item)} onHoverIn={() => setHoveredKey(itemKey)} onHoverOut={() => setHoveredKey((k) => (k === itemKey ? null : k))} onFocus={() => setFocusedKey(itemKey)} onBlur={() => setFocusedKey((k) => (k === itemKey ? null : k))} style={({ pressed }) => ({ flex:1, margin:8, padding:14, backgroundColor: accentBg, borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation: isOpen ? 12 : 2, zIndex: isOpen ? 1000 : 0, overflow:'visible', opacity: pressed || hoveredKey === itemKey ? 0.97 : 1, transform: [{ scale: pressed ? 0.98 : hoveredKey === itemKey ? 0.99 : 1 }], outlineWidth: Platform.OS === 'web' && focusedKey === itemKey ? 2 : 0, outlineColor: Platform.OS === 'web' && focusedKey === itemKey ? '#60A5FA' : 'transparent', outlineStyle: Platform.OS === 'web' && focusedKey === itemKey ? 'solid' : 'none' })}>
             <View style={{ flexDirection:'row', alignItems:'center' }}>
               <View style={{ width:36, height:36, borderRadius:8, backgroundColor:'#F9FAFB', alignItems:'center', justifyContent:'center', marginRight:10 }}>
                 {item.type === 'Cartões' && !!item.cardBrand ? (
@@ -581,8 +649,8 @@ const allowsNativeDriver = Platform.OS !== 'web';
                 )}
               </View>
               <View style={{ flex:1 }}>
-                <Text style={{ fontSize:16, fontWeight:'700', color:'#111827' }}>{item.name}</Text>
-                <Text style={{ fontSize:12, color:'#6B7280', marginTop:4 }}>{item.type || 'Documento'}</Text>
+                <Text style={{ fontSize:16, fontWeight:'800', color:'#111827' }}>{item.name}</Text>
+                <Text style={{ fontSize:12, color:'#6B7280', marginTop:2, fontWeight:'500' }}>{item.type || 'Documento'}</Text>
               </View>
               <TouchableOpacity onPress={() => setMenuFor(itemKey)}>
                 <Ionicons name='ellipsis-vertical' size={20} color={'#9CA3AF'} />
@@ -592,33 +660,47 @@ const allowsNativeDriver = Platform.OS !== 'web';
 
             <View style={{ flexDirection:'row', flexWrap:'wrap', marginTop:8 }}>
               {item.cardSubtype ? (
-                <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#EEF2FF', borderWidth:1, borderColor:'#CBD5E1', marginRight:6, marginBottom:6 }}>
+                <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#EEF2FF', marginRight:6, marginBottom:6 }}>
                   <Text style={{ fontSize:11, fontWeight:'700', color:'#334155' }}>{item.cardSubtype}</Text>
                 </View>
               ) : null}
               {item.cardBrand ? (
-                <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#F5F3FF', borderWidth:1, borderColor:'#DDD6FE', marginRight:6, marginBottom:6, flexDirection:'row', alignItems:'center' }}>
+                <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#F5F3FF', marginRight:6, marginBottom:6, flexDirection:'row', alignItems:'center' }}>
                   <FontAwesome name={brandIconName(item.cardBrand) as any} size={14} color={'#4B5563'} />
                   <Text style={{ fontSize:11, fontWeight:'700', color:'#4B5563', marginLeft:6 }}>{item.cardBrand}</Text>
                 </View>
               ) : null}
               {item.bank ? (
-                <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#ECFDF5', borderWidth:1, borderColor:'#A7F3D0', marginRight:6, marginBottom:6 }}>
+                <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#ECFDF5', marginRight:6, marginBottom:6 }}>
                   <Text style={{ fontSize:11, fontWeight:'700', color:'#065F46' }}>{item.bank}</Text>
                 </View>
               ) : null}
-              {item.expiryDate ? (
-                <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#FEF3C7', borderWidth:1, borderColor:'#FDE68A', marginRight:6, marginBottom:6 }}>
-                  <Text style={{ fontSize:11, fontWeight:'700', color:'#92400E' }}>Venc.: {item.expiryDate}</Text>
-                </View>
-              ) : null}
+              {item.expiryDate ? (() => {
+                  const d = parseExpiryDate(item.expiryDate);
+                  const days = d ? Math.ceil((d.getTime() - Date.now()) / (1000*60*60*24)) : null;
+                  const expired = isExpired(item.expiryDate);
+                  const soon = isExpiringSoon(item.expiryDate);
+                  if (expired) return (
+                    <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#FEE2E2', marginRight:6, marginBottom:6, flexDirection:'row', alignItems:'center' }}>
+                      <Ionicons name='alert-circle' size={14} color={'#EF4444'} />
+                      <Text style={{ fontSize:11, fontWeight:'700', color:'#EF4444', marginLeft:6 }}>Vencido</Text>
+                    </View>
+                  );
+                  if (soon && days !== null) return (
+                    <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#FEF3C7', marginRight:6, marginBottom:6, flexDirection:'row', alignItems:'center' }}>
+                      <Ionicons name='alert-circle' size={14} color={'#F59E0B'} />
+                      <Text style={{ fontSize:11, fontWeight:'700', color:'#F59E0B', marginLeft:6 }}>Vence em {days} dias</Text>
+                    </View>
+                  );
+                  return null;
+                })() : null}
               {(item.issueDate && (item.type === 'RG' || item.type === 'CNH')) ? (
                 <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#F3F4F6', borderWidth:1, borderColor:'#E5E7EB', marginRight:6, marginBottom:6 }}>
                   <Text style={{ fontSize:11, fontWeight:'700', color:'#374151' }}>Exp.: {item.issueDate}</Text>
                 </View>
               ) : null}
               {(item.electorZone || item.electorSection) && item.type === 'Título de Eleitor' ? (
-                <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#E0F2FE', borderWidth:1, borderColor:'#BAE6FD', marginRight:6, marginBottom:6 }}>
+                <View style={{ paddingVertical:4, paddingHorizontal:8, borderRadius:9999, backgroundColor:'#DBEAFE', marginRight:6, marginBottom:6 }}>
                   <Text style={{ fontSize:11, fontWeight:'700', color:'#0C4A6E' }}>Zona {item.electorZone || '—'} • Seção {item.electorSection || '—'}</Text>
                 </View>
               ) : null}
@@ -626,6 +708,29 @@ const allowsNativeDriver = Platform.OS !== 'web';
                 <Text style={{ fontSize:11, fontWeight:'700', color:'#374151' }}>{displayCategory(item)}</Text>
               </View>
             </View>
+
+            {hoveredKey === itemKey && (
+              <View style={{ position:'absolute', right:12, bottom:12, flexDirection:'row' }}>
+                {item.number ? (
+                  <TouchableOpacity onPress={() => Clipboard.setStringAsync(item.number!)} style={{ backgroundColor:'#111827', paddingVertical:6, paddingHorizontal:10, borderRadius:9999, marginLeft:8, flexDirection:'row', alignItems:'center' }}>
+                    <Ionicons name='copy-outline' size={14} color={'#fff'} style={{ marginRight:6 }} />
+                    <Text style={{ color:'#fff', fontSize:12, fontWeight:'700' }}>Copiar número</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {item.frontImageUri ? (
+                  <TouchableOpacity onPress={() => Linking.openURL(item.frontImageUri!)} style={{ backgroundColor:'#111827', paddingVertical:6, paddingHorizontal:10, borderRadius:9999, marginLeft:8, flexDirection:'row', alignItems:'center' }}>
+                    <Ionicons name='download-outline' size={14} color={'#fff'} style={{ marginRight:6 }} />
+                    <Text style={{ color:'#fff', fontSize:12, fontWeight:'700' }}>Baixar frente</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {item.backImageUri ? (
+                  <TouchableOpacity onPress={() => Linking.openURL(item.backImageUri!)} style={{ backgroundColor:'#111827', paddingVertical:6, paddingHorizontal:10, borderRadius:9999, marginLeft:8, flexDirection:'row', alignItems:'center' }}>
+                    <Ionicons name='download-outline' size={14} color={'#fff'} style={{ marginRight:6 }} />
+                    <Text style={{ color:'#fff', fontSize:12, fontWeight:'700' }}>Baixar verso</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
 
             {isOpen && (
                 <Pressable onStartShouldSetResponder={() => true} style={{ position:'absolute', right:14, top:14, backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:10, shadowColor:'#000', shadowOpacity:0.08, shadowRadius:14, elevation:12, zIndex: 2000 }}>
@@ -650,7 +755,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
                   </TouchableOpacity>
                 </Pressable>
               )}
-          </TouchableOpacity>
+          </Pressable>
         );
       }; // end renderItem
 
