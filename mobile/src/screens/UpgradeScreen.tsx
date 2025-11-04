@@ -19,6 +19,25 @@ export default function UpgradeScreen({ onClose, initialTab }: { onClose: () => 
     { label: '+20 GB', bytes: 20 * 1024 * 1024 * 1024, price: 29.9 },
   ];
   const [selectedTab, setSelectedTab] = useState<'premium' | 'buy-storage'>(initialTab === 'buy-storage' ? 'buy-storage' : 'premium');
+  // Seleciona automaticamente a aba de compra para usuários Premium
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const user = data?.user;
+        if (!user?.id) return;
+        const res = await fetch(`${API_BASE}/.netlify/functions/get-user-status?userId=${encodeURIComponent(user.id)}`);
+        if (res.ok) {
+          const j = await res.json();
+          if (j?.is_premium && !cancelled) {
+            setSelectedTab('buy-storage');
+          }
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   async function startAddonPayment(a: Addon) {
     setLoading(true);
@@ -228,5 +247,3 @@ export default function UpgradeScreen({ onClose, initialTab }: { onClose: () => 
     </View>
   );
 }
-
-// Duplicate UpgradeScreen block removed to keep a single export and avoid conflicts.

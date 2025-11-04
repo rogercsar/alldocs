@@ -41,7 +41,16 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
 
   useEffect(() => { load(); }, [userId]);
 
-  const pct = (used !== null && quota) ? Math.min(100, Math.round((used / Math.max(1, quota)) * 100)) : null;
+  const pctUsed = (used !== null && quota) ? Math.min(100, Math.round((used / Math.max(1, quota)) * 100)) : null;
+  const remaining = (used !== null && quota !== null) ? Math.max(0, quota - used) : null;
+  const pctRemaining = (remaining !== null && quota !== null) ? Math.max(0, Math.min(100, Math.round((remaining / Math.max(1, quota)) * 100))) : null;
+  const dangerThreshold = 1 * 1024 * 1024 * 1024; // 1GB
+  const color = (() => {
+    if (remaining === null || quota === null) return '#9CA3AF';
+    if (remaining <= dangerThreshold) return '#DC2626'; // vermelho
+    if (remaining < quota / 2) return '#D97706'; // amarelo
+    return '#22C55E'; // verde
+  })();
 
   if (variant === 'header') {
     return (
@@ -51,9 +60,14 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
         ) : error ? (
           <Text style={{ color:'#DC2626' }}>{error}</Text>
         ) : (
-          <Text style={{ color:'#374151' }}>{used !== null ? `Armazenado: ${humanBytes(used)}` : '—'}</Text>
+          <View style={{ flexDirection:'row', alignItems:'center' }}>
+            <View style={{ width:80, height:8, backgroundColor:'#E5E7EB', borderRadius:9999, overflow:'hidden', marginRight:8 }}>
+              <View style={{ width: pctRemaining !== null ? `${pctRemaining}%` : '0%', height:8, backgroundColor: color }} />
+            </View>
+            <Text style={{ color:'#374151' }}>{remaining !== null ? `Falta: ${humanBytes(remaining)}` : '—'}</Text>
+          </View>
         )}
-        <TouchableOpacity onPress={() => onOpenUpgrade && onOpenUpgrade('upgrade')} style={{ marginLeft:8, paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1, borderColor:'#D1D5DB', backgroundColor:'#fff' }}>
+        <TouchableOpacity onPress={() => onOpenUpgrade && onOpenUpgrade(remaining !== null && remaining <= dangerThreshold ? 'buy-storage' : 'upgrade')} style={{ marginLeft:8, paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1, borderColor:'#D1D5DB', backgroundColor:'#fff' }}>
           <Text style={{ color:'#111827', fontWeight:'700' }}>Upgrade</Text>
         </TouchableOpacity>
       </View>
@@ -70,22 +84,22 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
           ) : error ? (
             <Text style={{ marginTop:4, color:'#DC2626' }}>{error}</Text>
           ) : (
-            <Text style={{ marginTop:4, color:'#6B7280' }}>{used !== null && quota !== null ? `${humanBytes(used)} de ${humanBytes(quota)}` : '—'}</Text>
+            <Text style={{ marginTop:4, color:'#6B7280' }}>{remaining !== null && quota !== null ? `Restante: ${humanBytes(remaining)} de ${humanBytes(quota)}` : '—'}</Text>
           )}
         </View>
         <View style={{ alignItems:'flex-end' }}>
-          <TouchableOpacity onPress={() => onOpenUpgrade && onOpenUpgrade('upgrade')} style={{ backgroundColor:'#111827', paddingHorizontal:12, paddingVertical:8, borderRadius:8 }}>
+          <TouchableOpacity onPress={() => onOpenUpgrade && onOpenUpgrade(remaining !== null && remaining <= dangerThreshold ? 'buy-storage' : 'upgrade')} style={{ backgroundColor:'#111827', paddingHorizontal:12, paddingVertical:8, borderRadius:8 }}>
             <Text style={{ color:'#fff', fontWeight:'700' }}>Upgrade</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={{ height:10, marginTop:12, backgroundColor:'#F3F4F6', borderRadius:6, overflow:'hidden' }}>
-        <View style={{ height:10, width: pct !== null ? `${pct}%` : '0%', backgroundColor: pct !== null && pct > 90 ? '#DC2626' : '#2563EB' }} />
+        <View style={{ height:10, width: pctRemaining !== null ? `${pctRemaining}%` : '0%', backgroundColor: color }} />
       </View>
 
       <View style={{ flexDirection:'row', justifyContent:'space-between', marginTop:8 }}>
-        <Text style={{ color:'#6B7280' }}>{pct !== null ? `${pct}% usado` : ''}</Text>
+        <Text style={{ color:'#6B7280' }}>{pctRemaining !== null ? `${pctRemaining}% restante` : ''}</Text>
         <View style={{ flexDirection:'row' }}>
           <TouchableOpacity onPress={() => onOpenUpgrade && onOpenUpgrade('buy-storage')} style={{ borderWidth:1, borderColor:'#D1D5DB', paddingHorizontal:10, paddingVertical:6, borderRadius:8, marginRight:8 }}>
             <Text>Comprar armazenamento</Text>

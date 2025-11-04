@@ -2,6 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || 'documents';
 
 exports.handler = async (event) => {
   try {
@@ -22,14 +23,35 @@ exports.handler = async (event) => {
     if (usageError) {
       const code = usageError.code || '';
       const msg = usageError.message || '';
-      const missingTable = code === '42P01' || msg.includes('Could not find the table') || msg.includes('relation') && msg.includes('does not exist');
+      const missingTable = code === '42P01' || msg.includes('Could not find the table') || (msg.includes('relation') && msg.includes('does not exist'));
       const noRows = code === 'PGRST116';
       if (!missingTable && !noRows) {
         return { statusCode: 500, body: JSON.stringify({ error: usageError.message }) };
       }
     }
 
-    const usedBytes = usageData ? usageData.used_bytes : 0;
+    let usedBytes = usageData ? usageData.used_bytes : 0;
+
+    // Fallback: se o cache estiver vazio/zero, calcula somando arquivos do bucket
+    if (!usedBytes || usedBytes <= 0) {
+      try {
+        const { data: files, error: listErr } = await supabase.storage
+          .from(SUPABASE_BUCKET)
+          .list(userId, { limit: 1000, offset: 0, sortBy: { column: 'name', order: 'asc' } });
+        if (!listErr && Array.isArray(files)) {
+          const sum = files.reduce((acc, f) => acc + (typeof f.size === 'number' ? f.size : (f?.metadata?.size || 0)), 0);
+          if (sum > 0) {
+            usedBytes = sum;
+            // Atualiza/sem cache para futuras consultas
+            try {
+              await supabase
+                .from('usage_cache')
+                .upsert({ user_id: userId, used_bytes: sum, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+            } catch {}
+          }
+        }
+      } catch {}
+    }
 
     const { data: quotaData, error: quotaError } = await supabase
       .from('effective_quota_view')
@@ -40,7 +62,7 @@ exports.handler = async (event) => {
     if (quotaError) {
       const code = quotaError.code || '';
       const msg = quotaError.message || '';
-      const missingView = code === '42P01' || msg.includes('Could not find the table') || msg.includes('relation') && msg.includes('does not exist');
+      const missingView = code === '42P01' || msg.includes('Could not find the table') || (msg.includes('relation') && msg.includes('does not exist'));
       const noRows = code === 'PGRST116';
       if (!missingView && !noRows) {
         return { statusCode: 500, body: JSON.stringify({ error: quotaError.message }) };
