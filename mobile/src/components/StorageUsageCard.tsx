@@ -41,20 +41,25 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
 
   useEffect(() => { load(); }, [userId]);
 
-  const pctUsed = (used !== null && quota) ? Math.min(100, Math.round((used / Math.max(1, quota)) * 100)) : null;
   const remaining = (used !== null && quota !== null) ? Math.max(0, quota - used) : null;
   const pctRemaining = (remaining !== null && quota !== null) ? Math.max(0, Math.min(100, Math.round((remaining / Math.max(1, quota)) * 100))) : null;
   const dangerThreshold = 1 * 1024 * 1024 * 1024; // 1GB
   const color = (() => {
     if (remaining === null || quota === null) return '#9CA3AF';
     if (remaining <= dangerThreshold) return '#DC2626'; // vermelho
-    if (remaining < quota / 2) return '#D97706'; // amarelo
+    if (remaining < (quota as number) / 2) return '#D97706'; // amarelo
     return '#22C55E'; // verde
   })();
 
+  const handlePressBar = () => {
+    if (!onOpenUpgrade) return;
+    const mode: 'upgrade' | 'buy-storage' = remaining !== null && remaining <= dangerThreshold ? 'buy-storage' : 'upgrade';
+    onOpenUpgrade(mode);
+  };
+
   if (variant === 'header') {
     return (
-      <View style={{ flexDirection:'row', alignItems:'center' }}>
+      <TouchableOpacity onPress={handlePressBar} style={{ flexDirection:'row', alignItems:'center' }}>
         {loading ? (
           <Text style={{ color:'#6B7280' }}>Carregando…</Text>
         ) : error ? (
@@ -67,15 +72,12 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
             <Text style={{ color:'#374151' }}>{remaining !== null ? `${humanBytes(remaining)}` : '—'}</Text>
           </View>
         )}
-        <TouchableOpacity onPress={() => onOpenUpgrade && onOpenUpgrade(remaining !== null && remaining <= dangerThreshold ? 'buy-storage' : 'upgrade')} style={{ marginLeft:8, paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1, borderColor:'#D1D5DB', backgroundColor:'#fff' }}>
-          <Text style={{ color:'#111827', fontWeight:'700' }}>Upgrade</Text>
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     );
   }
 
   return (
-    <View style={{ padding:12, backgroundColor:'#fff', borderRadius:10, borderWidth:1, borderColor:'#E5E7EB', marginHorizontal:16, marginTop:12 }}>
+    <TouchableOpacity onPress={handlePressBar} style={{ padding:12, backgroundColor:'#fff', borderRadius:10, borderWidth:1, borderColor:'#E5E7EB', marginHorizontal:16, marginTop:12 }}>
       <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
         <View>
           <Text style={{ fontSize:14, fontWeight:'700' }}>Armazenamento</Text>
@@ -88,15 +90,13 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
           )}
         </View>
         <View style={{ alignItems:'flex-end' }}>
-          <TouchableOpacity onPress={() => onOpenUpgrade && onOpenUpgrade(remaining !== null && remaining <= dangerThreshold ? 'buy-storage' : 'upgrade')} style={{ backgroundColor:'#111827', paddingHorizontal:12, paddingVertical:8, borderRadius:8 }}>
-            <Text style={{ color:'#fff', fontWeight:'700' }}>Upgrade</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
       <View style={{ height:10, marginTop:12, backgroundColor:'#F3F4F6', borderRadius:6, overflow:'hidden' }}>
         <View style={{ height:10, width: pctRemaining !== null ? `${pctRemaining}%` : '0%', backgroundColor: color }} />
       </View>
+      <Text style={{ marginTop:6, color:'#374151', textAlign:'center' }}>{remaining !== null ? `${humanBytes(remaining)} restante` : ''}</Text>
 
       <View style={{ flexDirection:'row', justifyContent:'space-between', marginTop:8 }}>
         <Text style={{ color:'#6B7280' }}>{pctRemaining !== null ? `${pctRemaining}% restante` : ''}</Text>
@@ -109,6 +109,6 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }

@@ -576,11 +576,11 @@ const allowsNativeDriver = Platform.OS !== 'web';
               ) : null}
               <View style={{ position:'relative', paddingVertical:6, paddingHorizontal:10, marginRight: 6 }}>
                 <TouchableOpacity onPress={() => setNotificationsOpen(true)}>
-                  <Ionicons name={notifMessages.length ? 'notifications' : 'notifications-outline'} size={22} color={colors.text} />
+                  <Ionicons name={notifItems.length ? 'notifications' : 'notifications-outline'} size={22} color={colors.text} />
                 </TouchableOpacity>
-                {notifMessages.length > 0 && (
+                {notifItems.length > 0 && (
                   <View style={{ position:'absolute', top:2, right:6, backgroundColor: dangerColor, borderRadius:9, minWidth:18, height:18, alignItems:'center', justifyContent:'center', paddingHorizontal:3 }}>
-                    <Text style={{ color:'#fff', fontSize:10, fontWeight:'800' }}>{notifMessages.length > 9 ? '9+' : String(notifMessages.length)}</Text>
+                    <Text style={{ color:'#fff', fontSize:10, fontWeight:'800' }}>{notifItems.length > 9 ? '9+' : String(notifItems.length)}</Text>
                   </View>
                 )}
               </View>
@@ -809,16 +809,65 @@ const allowsNativeDriver = Platform.OS !== 'web';
       }, [userId]);
 
       const deviceLimitReached = deviceCount !== null && deviceLimit !== null && deviceCount >= deviceLimit;
-      const notifMessages: string[] = [];
+      const [storageRemaining, setStorageRemaining] = useState<number | null>(null);
+      const [storageQuota, setStorageQuota] = useState<number | null>(null);
+      useEffect(() => {
+        let cancelled = false;
+        (async () => {
+          try {
+            if (!userId || userId === 'anonymous') return;
+            const base = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || (typeof window !== 'undefined' ? (window as any).location.origin : '');
+            if (!base) return;
+            const res = await fetch(`${base}/.netlify/functions/usage?user_id=${encodeURIComponent(userId)}`);
+            if (!res.ok) return;
+            const j = await res.json();
+            const used = typeof j.used_bytes === 'number' ? j.used_bytes : null;
+            const quota = typeof j.effective_quota_bytes === 'number' ? j.effective_quota_bytes : null;
+            if (!cancelled) {
+              const rem = (used !== null && quota !== null) ? Math.max(0, quota - used) : null;
+              setStorageRemaining(rem);
+              setStorageQuota(quota);
+            }
+          } catch {}
+        })();
+        return () => { cancelled = true; };
+      }, [userId]);
+
+      const notifItems: { text: string; action?: () => void }[] = [];
       if (deviceLimitReached) {
-        notifMessages.push(isPremiumDevices
-          ? `Limite premium de dispositivos atingido (${deviceCount}/${deviceLimit}).`
-          : `Limite de dispositivos atingido (${deviceCount}/${deviceLimit}). Faça upgrade para adicionar mais.`);
+        notifItems.push({
+          text: isPremiumDevices
+            ? `Limite premium de dispositivos atingido (${deviceCount}/${deviceLimit}).`
+            : `Limite de dispositivos atingido (${deviceCount}/${deviceLimit}). Faça upgrade para adicionar mais.`,
+          action: () => navigation.navigate('Upgrade', { initialTab: 'premium' }),
+        });
       }
-      if (limitReached) notifMessages.push('Limite gratuito de 4 documentos atingido. Desbloqueie Premium.');
+      if (limitReached) {
+        notifItems.push({
+          text: 'Limite gratuito de 4 documentos atingido. Desbloqueie Premium.',
+          action: () => navigation.navigate('Upgrade', { initialTab: 'premium' }),
+        });
+      }
 
       // Alertas de vencimento de documentos (util compartilhado)
-      buildExpiryAlerts(docs).forEach((msg) => notifMessages.push(msg));
+      buildExpiryAlerts(docs).forEach((msg) => notifItems.push({ text: msg }));
+
+      const dangerThreshold = 1 * 1024 * 1024 * 1024; // 1GB
+      if (storageRemaining !== null && storageQuota !== null) {
+        const isRed = storageRemaining <= dangerThreshold;
+        const isYellow = !isRed && storageRemaining < storageQuota / 2;
+        if (isRed) {
+          notifItems.push({
+            text: 'Armazenamento crítico: menos de 1GB restante.',
+            action: () => navigation.navigate('Upgrade', { initialTab: 'buy-storage' }),
+          });
+        } else if (isYellow) {
+          notifItems.push({
+            text: 'Armazenamento em atenção: menos da metade restante.',
+            action: () => navigation.navigate('Upgrade', { initialTab: 'premium' }),
+          });
+        }
+      }
 
       const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -850,11 +899,11 @@ const allowsNativeDriver = Platform.OS !== 'web';
               ) : null}
               <View style={{ position:'relative', paddingVertical:6, paddingHorizontal:10, marginRight: 6 }}>
                 <TouchableOpacity onPress={() => setNotificationsOpen(true)}>
-                  <Ionicons name={notifMessages.length ? 'notifications' : 'notifications-outline'} size={22} color={colors.text} />
+                  <Ionicons name={notifItems.length ? 'notifications' : 'notifications-outline'} size={22} color={colors.text} />
                 </TouchableOpacity>
-                {notifMessages.length > 0 && (
+                {notifItems.length > 0 && (
                   <View style={{ position:'absolute', top:2, right:6, backgroundColor: dangerColor, borderRadius:9, minWidth:18, height:18, alignItems:'center', justifyContent:'center', paddingHorizontal:3 }}>
-                    <Text style={{ color:'#fff', fontSize:10, fontWeight:'800' }}>{notifMessages.length > 9 ? '9+' : String(notifMessages.length)}</Text>
+                    <Text style={{ color:'#fff', fontSize:10, fontWeight:'800' }}>{notifItems.length > 9 ? '9+' : String(notifItems.length)}</Text>
                   </View>
                 )}
               </View>
@@ -864,7 +913,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
             </View>
           ),
         });
-      }, [navigation, logoError, notifMessages.length]);
+      }, [navigation, logoError, notifItems.length]);
 
       // Dropdown de tipos: animação de abertura/fechamento
       useEffect(() => {
@@ -972,14 +1021,21 @@ const allowsNativeDriver = Platform.OS !== 'web';
                     <Text style={{ color: colors.brandPrimary, fontWeight:'700' }}>Fechar</Text>
                   </TouchableOpacity>
                 </View>
-                {notifMessages.length === 0 ? (
+                {notifItems.length === 0 ? (
                   <Text style={{ color:'#6B7280' }}>Sem notificações no momento.</Text>
                 ) : (
                   <View>
-                    {notifMessages.map((msg, idx) => (
-                      <View key={idx} style={{ paddingVertical:8, flexDirection:'row', alignItems:'flex-start' }}>
-                        <Ionicons name='information-circle-outline' size={18} color={colors.brandPrimary} style={{ marginRight:8, marginTop:2 }} />
-                        <Text style={{ color:'#111827' }}>{msg}</Text>
+                    {notifItems.map((item, idx) => (
+                      <View key={idx} style={{ paddingVertical:8, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
+                        <View style={{ flexDirection:'row', alignItems:'center', flex:1 }}>
+                          <Ionicons name='information-circle-outline' size={18} color={colors.brandPrimary} style={{ marginRight:8 }} />
+                          <Text style={{ color:'#111827' }}>{item.text}</Text>
+                        </View>
+                        {item.action ? (
+                          <TouchableOpacity onPress={item.action} style={{ borderWidth:1, borderColor: colors.brandPrimary, borderRadius:8, paddingVertical:6, paddingHorizontal:10, marginLeft:8 }}>
+                            <Text style={{ color: colors.brandPrimary, fontWeight:'700' }}>Abrir</Text>
+                          </TouchableOpacity>
+                        ) : null}
                       </View>
                     ))}
                     <View style={{ height:8 }} />
