@@ -64,7 +64,7 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
             <View style={{ width:80, height:8, backgroundColor:'#E5E7EB', borderRadius:9999, overflow:'hidden', marginRight:8 }}>
               <View style={{ width: pctRemaining !== null ? `${pctRemaining}%` : '0%', height:8, backgroundColor: color }} />
             </View>
-            <Text style={{ color:'#374151' }}>{remaining !== null ? `Falta: ${humanBytes(remaining)}` : '—'}</Text>
+            <Text style={{ color:'#374151' }}>{remaining !== null ? `${humanBytes(remaining)}` : '—'}</Text>
           </View>
         )}
         <TouchableOpacity onPress={() => onOpenUpgrade && onOpenUpgrade(remaining !== null && remaining <= dangerThreshold ? 'buy-storage' : 'upgrade')} style={{ marginLeft:8, paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1, borderColor:'#D1D5DB', backgroundColor:'#fff' }}>
