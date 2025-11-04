@@ -140,15 +140,7 @@ function accentBgForCategory(cat?: string): string {
 
 export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: (tab?: 'premium' | 'buy-storage') => void; onLogout?: () => void; userId: string; }) {
   const navigation = useNavigation<any>();
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        userId && userId !== 'anonymous' ? (
-          <StorageUsageCard userId={userId} onOpenUpgrade={() => navigation.navigate('Upgrade', { initialTab: isPremiumPlan ? 'buy-storage' : 'premium' })} variant="header" />
-        ) : null
-      ),
-    });
-  }, [navigation, userId, isPremiumPlan]);
+  // headerRight é configurado no useLayoutEffect principal mais abaixo junto com o headerLeft.
   const { showToast } = useToast();
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [limitReached, setLimitReached] = useState(false);
