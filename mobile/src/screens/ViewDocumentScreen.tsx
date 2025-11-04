@@ -105,6 +105,7 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
     (async () => {
       try {
         const isCNH = type === 'CNH';
+        const isRG = type === 'RG';
         const needsMeta = !meta.issueDate || !meta.expiryDate || !meta.issuingState || !meta.issuingCity || !meta.issuingAuthority;
         const hasRemoteId = !!(document as any).appId;
         if (isCNH && needsMeta && hasRemoteId && userId) {
@@ -125,12 +126,31 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
             }));
           }
         }
+        if (isRG && needsMeta && hasRemoteId && userId) {
+          const { data: rows } = await supabase
+            .from('doc_rg')
+            .select('issue_date,issuing_state,issuing_city,issuing_authority')
+            .eq('user_id', userId)
+            .eq('app_id', (document as any).appId)
+            .limit(1);
+          const r = rows && rows[0];
+          if (!cancelled && r) {
+            setMeta((prev) => ({
+              issueDate: prev.issueDate || (r.issue_date as any) || '',
+              // RG não possui expiry_date na sub-tabela; mantém o valor atual
+              expiryDate: prev.expiryDate || '',
+              issuingState: prev.issuingState || (r.issuing_state as any) || '',
+              issuingCity: prev.issuingCity || (r.issuing_city as any) || '',
+              issuingAuthority: prev.issuingAuthority || (r.issuing_authority as any) || '',
+            }));
+          }
+        }
       } catch (e) {
         // ignore
       }
     })();
     return () => { cancelled = true; };
-  }, [type, userId, (document as any)?.appId]);
+  }, [type, userId, (document as any).appId]);
 
   async function remove() {
     if (!document?.id) return;

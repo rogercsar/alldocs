@@ -194,7 +194,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
           // Fallback robusto: chamada direta PostgREST com apikey na URL
           if (SUPABASE_URL && SUPABASE_ANON_KEY) {
             const qs = new URLSearchParams({
-              select: 'app_id,name,number,front_path,back_path,updated_at',
+              select: 'app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority,elector_zone,elector_section,card_subtype,bank,cvc,card_brand',
               order: 'updated_at.desc',
             });
             const restUrl = `${SUPABASE_URL}/rest/v1/documents?${qs.toString()}&user_id=eq.${encodeURIComponent(userId)}&apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}`;
@@ -286,6 +286,27 @@ const allowsNativeDriver = Platform.OS !== 'web';
               if (d.bank != null) item.bank = d.bank;
               if (d.cvc != null) item.cvc = d.cvc;
               if (d.card_brand != null) item.cardBrand = d.card_brand;
+              // RG: hidratar metadados da sub-tabela se faltarem
+              if ((item.type || '').toLowerCase().includes('rg') && userId) {
+                const needRgMeta = (item.issueDate == null) || (item.issuingState == null) || (item.issuingCity == null) || (item.issuingAuthority == null);
+                if (needRgMeta) {
+                  try {
+                    const { data: rgRows } = await supabase
+                      .from('doc_rg')
+                      .select('issue_date,issuing_state,issuing_city,issuing_authority')
+                      .eq('user_id', userId)
+                      .eq('app_id', d.app_id)
+                      .limit(1);
+                    const r = rgRows && rgRows[0];
+                    if (r) {
+                      if (r.issue_date != null && item.issueDate == null) item.issueDate = r.issue_date;
+                      if (r.issuing_state != null && item.issuingState == null) item.issuingState = r.issuing_state;
+                      if (r.issuing_city != null && item.issuingCity == null) item.issuingCity = r.issuing_city;
+                      if (r.issuing_authority != null && item.issuingAuthority == null) item.issuingAuthority = r.issuing_authority;
+                    }
+                  } catch {}
+                }
+              }
               return item as DocumentItem;
             })
           );
