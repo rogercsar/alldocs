@@ -6,6 +6,7 @@ import { colors } from '../theme/colors';
 import { getOrCreateDeviceId, getDeviceLockEnabled, setDeviceLockEnabled } from '../utils/device';
 import { typography } from '../theme/typography';
 import { spacing } from '../theme/spacing';
+import StorageUsageCard from '../components/StorageUsageCard';
 
 export default function ProfileScreen({ navigation }: any) {
   const [email, setEmail] = useState<string>('');
@@ -168,7 +169,7 @@ export default function ProfileScreen({ navigation }: any) {
               <ActivityIndicator color={primary} />
             </View>
           ) : (
-            <>
+            <View>
               <View style={{ flexDirection:'row', alignItems:'center', marginBottom: spacing.sm }}>
                 <Ionicons name='person-circle' size={28} color={accent} style={{ marginRight:8 }} />
                 <View style={{ flex:1 }}>
@@ -219,6 +220,11 @@ export default function ProfileScreen({ navigation }: any) {
 
               <View style={{ height:1, backgroundColor: border, marginVertical: spacing.md }} />
 
+              {/* Armazenamento */}
+              <StorageUsageCard userId={userId} onOpenUpgrade={(mode) => navigation.navigate('Upgrade', { initialTab: mode === 'buy-storage' ? 'buy-storage' : 'premium' })} />
+
+              <View style={{ height:1, backgroundColor: border, marginVertical: spacing.md }} />
+
               {/* Segurança */}
               <View style={{ borderWidth:1, borderColor: border, backgroundColor: colors.surface, borderRadius:12, padding: spacing.md, marginBottom: spacing.sm }}>
                 <View style={{ flexDirection:'row', alignItems:'center' }}>
@@ -259,7 +265,7 @@ export default function ProfileScreen({ navigation }: any) {
               )}
 
               <Text style={{ color: mutedText, fontSize: typography.sizes.caption, marginTop: spacing.xs }}>A contagem considera cada dispositivo autenticado nas últimas sessões.</Text>
-            </>
+            </View>
           )}
         </View>
       </View>

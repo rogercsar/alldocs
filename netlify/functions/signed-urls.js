@@ -38,8 +38,41 @@ exports.handler = async function(event) {
           .eq('user_id', userId)
           .single();
         if (quotaErr && quotaErr.code !== 'PGRST116') throw quotaErr;
+        // Fallback premium-aware quando a view não retorna
         const defaultFreeQuota = 1 * 1024 * 1024 * 1024; // 1GB
-        const effectiveQuotaBytes = quotaData?.effective_quota_bytes ?? defaultFreeQuota;
+        const defaultPremiumQuota = 5 * 1024 * 1024 * 1024; // 5GB
+        let effectiveQuotaBytes = quotaData?.effective_quota_bytes ?? null;
+
+        if (!effectiveQuotaBytes || effectiveQuotaBytes <= 0) {
+          let isPremium = false;
+          try {
+            const { data: prof, error: profErr } = await supabase
+              .from('user_profiles')
+              .select('is_premium')
+              .eq('id', userId)
+              .limit(1);
+            if (profErr) throw profErr;
+            const row = Array.isArray(prof) ? prof[0] : prof;
+            isPremium = !!row?.is_premium;
+          } catch {
+            isPremium = false;
+          }
+          let addonBytes = 0;
+          try {
+            const { data: addons, error: addonErr } = await supabase
+              .from('storage_addons')
+              .select('bytes, status')
+              .eq('user_id', userId)
+              .eq('status', 'active');
+            if (addonErr) throw addonErr;
+            if (Array.isArray(addons)) {
+              addonBytes = addons.reduce((acc, a) => acc + (Number(a?.bytes) || 0), 0);
+            }
+          } catch {
+            addonBytes = 0;
+          }
+          effectiveQuotaBytes = (isPremium ? defaultPremiumQuota : defaultFreeQuota) + addonBytes;
+        }
 
         if (expectedBytes > 0 && usedBytes + expectedBytes > effectiveQuotaBytes) {
           return json({ error: 'quota_exceeded', used_bytes: usedBytes, effective_quota_bytes: effectiveQuotaBytes }, 409);
