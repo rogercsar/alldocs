@@ -92,6 +92,8 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
 
   const type = normalizeDocType(document.type);
   const template = getViewTemplate(type);
+  const accentOverride = accentColorForCategory(document.category);
+  const accent = accentOverride || template.accentColor;
   const numberDisplay = formatNumberByType(type, document.number);
   const [meta, setMeta] = useState<{ issueDate: string; expiryDate: string; issuingState: string; issuingCity: string; issuingAuthority: string }>({
     issueDate: document.issueDate || '',
@@ -289,20 +291,20 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
 
       {document.frontImageUri && document.backImageUri && template.layout === 'sideBySide' ? (
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-          <View style={{ flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: template.accentColor, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+          <View style={{ flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: accent, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
             <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.frontLabel}</Text>
             <View style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: '#F9FAFB', position:'relative' }}>
-              <View style={{ position:'absolute', top:8, left:8, backgroundColor: template.accentColor, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
+              <View style={{ position:'absolute', top:8, left:8, backgroundColor: accent, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
                 <Ionicons name={template.icon as any} size={14} color='#fff' style={{ marginRight: 6 }} />
                 <Text style={{ color:'#fff', fontWeight:'700' }}>{template.frontLabel}</Text>
               </View>
               <Image source={{ uri: document.frontImageUri }} style={{ height: 200 }} resizeMode='contain' />
             </View>
           </View>
-          <View style={{ flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: template.accentColor, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+          <View style={{ flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: accent, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
             <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.backLabel}</Text>
             <View style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: '#F9FAFB', position:'relative' }}>
-              <View style={{ position:'absolute', top:8, left:8, backgroundColor: template.accentColor, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
+              <View style={{ position:'absolute', top:8, left:8, backgroundColor: accent, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
                 <Ionicons name={template.icon as any} size={14} color='#fff' style={{ marginRight: 6 }} />
                 <Text style={{ color:'#fff', fontWeight:'700' }}>{template.backLabel}</Text>
               </View>
@@ -313,10 +315,10 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
       ) : (
         <>
           {document.frontImageUri ? (
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: template.accentColor, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, marginBottom: 16 }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: accent, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, marginBottom: 16 }}>
               <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.frontLabel}</Text>
               <View style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: '#F9FAFB', position:'relative' }}>
-                <View style={{ position:'absolute', top:8, left:8, backgroundColor: template.accentColor, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
+                <View style={{ position:'absolute', top:8, left:8, backgroundColor: accent, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
                   <Ionicons name={template.icon as any} size={14} color='#fff' style={{ marginRight: 6 }} />
                   <Text style={{ color:'#fff', fontWeight:'700' }}>{template.frontLabel}</Text>
                 </View>
@@ -325,10 +327,8 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
             </View>
           ) : null}
           {template.hasBack && document.backImageUri ? (
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: template.accentColor, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
-              <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.backLabel}</Text>
-              <View style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: '#F9FAFB', position:'relative' }}>
-                <View style={{ position:'absolute', top:8, left:8, backgroundColor: template.accentColor, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: accent, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+            <View style={{ position:'absolute', top:8, left:8, backgroundColor: accent, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
                   <Ionicons name={template.icon as any} size={14} color='#fff' style={{ marginRight: 6 }} />
                   <Text style={{ color:'#fff', fontWeight:'700' }}>{template.backLabel}</Text>
                 </View>
@@ -405,5 +405,17 @@ function brandIconName(brand?: string) {
     case 'elo': return 'credit-card';
     case 'hipercard': return 'credit-card';
     default: return 'credit-card';
+  }
+}
+
+function accentColorForCategory(cat?: string): string | null {
+  switch (cat) {
+    case 'Financeiro': return '#EF4444';
+    case 'Saúde': return '#10B981';
+    case 'Transporte': return '#22C55E';
+    case 'Trabalho': return '#F59E0B';
+    case 'Estudo': return '#8B5CF6';
+    case 'Pessoais': return '#3B82F6';
+    default: return null;
   }
 }

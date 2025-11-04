@@ -77,8 +77,21 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
   function currentCategory() {
     const t = (docType || '').toLowerCase();
     const sub = (cardSubtype || '').toLowerCase();
-    if (t.includes('veículo') || sub.includes('transporte')) return 'Transporte';
-    if (sub.includes('saúde') || sub.includes('plano')) return 'Saúde';
+    const rawName = (name || '').toLowerCase();
+    const nm = rawName;
+    const tokens = rawName.replace(/[.\-_/]/g, ' ').split(/\s+/).map(s => s.trim()).filter(Boolean);
+    const hasToken = (tok: string) => tokens.includes(tok);
+    // Heurísticas para Trabalho e Estudo com base no nome
+    if (
+      nm.includes('trabalho') || nm.includes('carteira de trabalho') || nm.includes('ctps') || nm.includes('profission') ||
+      nm.includes('emprego') || hasToken('rh') || nm.includes('recursos humanos') || hasToken('nis') || hasToken('pis') || nm.includes('pis/pasep')
+    ) return 'Trabalho';
+    if (
+      nm.includes('estud') || nm.includes('carteira estudantil') || nm.includes('estudante') || nm.includes('escolar') || nm.includes('univers') || nm.includes('matricul') || nm.includes('faculdade') ||
+      nm.includes('boletim') || nm.includes('diploma') || nm.includes('histórico') || nm.includes('historico') || nm.includes('registro acadêmico') || nm.includes('registro academico') || hasToken('ra') || nm.includes('aluno')
+    ) return 'Estudo';
+    if (t.includes('veículo') || t.includes('veiculo') || sub.includes('transporte')) return 'Transporte';
+    if (sub.includes('saúde') || sub.includes('saude') || sub.includes('plano')) return 'Saúde';
     if (t.includes('cart')) return 'Financeiro';
     return 'Pessoais';
   }
@@ -238,6 +251,8 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
                 { label: 'Financeiro', value: 'Financeiro' },
                 { label: 'Saúde', value: 'Saúde' },
                 { label: 'Transporte', value: 'Transporte' },
+                { label: 'Trabalho', value: 'Trabalho' },
+                { label: 'Estudo', value: 'Estudo' },
               ]}
               onChange={(v) => setCategory(v)}
             />

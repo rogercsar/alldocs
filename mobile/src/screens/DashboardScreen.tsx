@@ -87,14 +87,41 @@ function brandIconName(brand?: string) {
 function categoryForDoc(d: DocumentItem): string {
   const t = (d.type || '').toLowerCase();
   const sub = (d.cardSubtype || '').toLowerCase();
-  if (t.includes('veículo') || sub.includes('transporte')) return 'Transporte';
-  if (sub.includes('saúde') || sub.includes('plano')) return 'Saúde';
+  const rawName = (d.name || '').toLowerCase();
+  const name = rawName;
+  const tokens = rawName.replace(/[.\-_/]/g, ' ').split(/\s+/).map(s => s.trim()).filter(Boolean);
+  const hasToken = (tok: string) => tokens.includes(tok);
+  // Heurísticas para Trabalho
+  if (
+    name.includes('trabalho') || name.includes('carteira de trabalho') || name.includes('ctps') || name.includes('profission') ||
+    name.includes('emprego') || hasToken('rh') || name.includes('recursos humanos') || hasToken('nis') || hasToken('pis') || name.includes('pis/pasep')
+  ) return 'Trabalho';
+  // Heurísticas para Estudo
+  if (
+    name.includes('estud') || name.includes('carteira estudantil') || name.includes('estudante') || name.includes('escolar') || name.includes('univers') || name.includes('matricul') || name.includes('faculdade') ||
+    name.includes('boletim') || name.includes('diploma') || name.includes('histórico') || name.includes('historico') || name.includes('registro acadêmico') || name.includes('registro academico') || hasToken('ra') || name.includes('aluno')
+  ) return 'Estudo';
+  // Demais categorias por tipo/subtipo
+  if (t.includes('veículo') || t.includes('veiculo') || sub.includes('transporte')) return 'Transporte';
+  if (sub.includes('saúde') || sub.includes('saude') || sub.includes('plano')) return 'Saúde';
   if (t.includes('cart')) return 'Financeiro';
   return 'Pessoais';
 }
 // Preferir categoria salva quando existir
 function displayCategory(d: DocumentItem): string {
   return d.category || categoryForDoc(d);
+}
+
+function accentColorForCategory(cat?: string): string | null {
+  switch (cat) {
+    case 'Financeiro': return '#EF4444';
+    case 'Saúde': return '#10B981';
+    case 'Transporte': return '#22C55E';
+    case 'Trabalho': return '#F59E0B';
+    case 'Estudo': return '#8B5CF6';
+    case 'Pessoais': return '#3B82F6';
+    default: return null;
+  }
 }
 
 export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; onLogout?: () => void; userId: string; }) {
@@ -511,7 +538,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
         const hasId = typeof item.id === 'number';
         const itemKey = keyForItem(item);
         const isOpen = menuFor === itemKey;
-        const accentBg = accentBgForType(item.type);
+        const accentBg = accentBgForCategory(displayCategory(item));
         return (
           <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor: accentBg, borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation: isOpen ? 12 : 2, zIndex: isOpen ? 1000 : 0, overflow:'visible' }}>
             <View style={{ flexDirection:'row', alignItems:'center' }}>
@@ -519,7 +546,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
                 {item.type === 'Cartões' && !!item.cardBrand ? (
                   <FontAwesome name={brandIconName(item.cardBrand) as any} size={20} color={'#374151'} />
                 ) : (
-                  <Ionicons name={icon.name} size={22} color={icon.color} />
+                  <Ionicons name={icon.name} size={22} color={accentColorForCategory(displayCategory(item)) || icon.color} />
                 )}
               </View>
               <View style={{ flex:1 }}>
@@ -713,7 +740,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
         <Pressable onPress={() => setIsTypeMenuOpen(false)} style={{ position:'absolute', left:0, right:0, top:0, bottom:0, zIndex:30, backgroundColor:'rgba(17,24,39,0.03)' }} />
         <Animated.View style={{ position:'absolute', top: 64, right: 16, opacity: typeMenuOpacity, transform:[{ scale: typeMenuScale }], zIndex:40 }}>
           <View style={{ backgroundColor:'#fff', borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.12, shadowRadius:18, elevation:4, overflow:'hidden', minWidth: 180 }}>
-            {['Todos','Pessoais','Financeiro','Saúde','Transporte'].map((label) => (
+            {['Todos','Pessoais','Financeiro','Saúde','Transporte','Trabalho','Estudo'].map((label) => (
               <Pressable key={label} onPress={() => { setIsTypeMenuOpen(false); setCategoryFilter(label === 'Todos' ? null : label); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#F9FAFB' : '#fff' })}>
                 <Text style={{ fontSize:14, color:'#111827', fontWeight:'700' }}>{label}</Text>
               </Pressable>
