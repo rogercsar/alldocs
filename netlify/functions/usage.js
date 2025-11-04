@@ -19,8 +19,14 @@ exports.handler = async (event) => {
       .eq('user_id', userId)
       .single();
 
-    if (usageError && usageError.code !== 'PGRST116') {
-      return { statusCode: 500, body: JSON.stringify({ error: usageError.message }) };
+    if (usageError) {
+      const code = usageError.code || '';
+      const msg = usageError.message || '';
+      const missingTable = code === '42P01' || msg.includes('Could not find the table') || msg.includes('relation') && msg.includes('does not exist');
+      const noRows = code === 'PGRST116';
+      if (!missingTable && !noRows) {
+        return { statusCode: 500, body: JSON.stringify({ error: usageError.message }) };
+      }
     }
 
     const usedBytes = usageData ? usageData.used_bytes : 0;
@@ -31,8 +37,14 @@ exports.handler = async (event) => {
       .eq('user_id', userId)
       .single();
 
-    if (quotaError && quotaError.code !== 'PGRST116') {
-      return { statusCode: 500, body: JSON.stringify({ error: quotaError.message }) };
+    if (quotaError) {
+      const code = quotaError.code || '';
+      const msg = quotaError.message || '';
+      const missingView = code === '42P01' || msg.includes('Could not find the table') || msg.includes('relation') && msg.includes('does not exist');
+      const noRows = code === 'PGRST116';
+      if (!missingView && !noRows) {
+        return { statusCode: 500, body: JSON.stringify({ error: quotaError.message }) };
+      }
     }
 
     const defaultFreeQuota = 1 * 1024 * 1024 * 1024; // 1GB
