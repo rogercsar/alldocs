@@ -106,7 +106,7 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
         {(isRed || isYellow) ? (
           <Ionicons name={isRed ? 'alert-circle' : 'alert-circle-outline'} size={14} color={color} style={{ marginRight:6 }} />
         ) : null}
-        <Text style={{ color:'#374151' }}>{remaining !== null ? `${humanBytes(remaining)} restante` : ''}</Text>
+        <Text style={{ color:'#374151' }}>{remaining !== null && quota !== null ? `Restante: ${humanBytes(remaining)} de ${humanBytes(quota)} (${pctRemaining}%)` : ''}</Text>
       </View>
 
       <View style={{ flexDirection:'row', justifyContent:'space-between', marginTop:8 }}>
