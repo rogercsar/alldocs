@@ -42,7 +42,7 @@ function accentBgForType(type?: string): string {
     case 'Certidões': return '#F5F3FF'; // roxo muito claro
     case 'Título de Eleitor': return '#DBEAFE'; // azul claro
     case 'CPF': return '#FEF3C7'; // âmbar claro
-    case 'Outros': return '#E6E6FA'; // lavanda (não branco)
+    case 'Outros': return '#F3F4F6'; // cinza claro
     default: return '#E6E6FA';
   }
 }

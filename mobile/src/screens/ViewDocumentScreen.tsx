@@ -11,6 +11,7 @@ import { typography } from '../theme/typography';
 import { spacing } from '../theme/spacing';
 import { useToast } from '../components/Toast';
 import { FontAwesome } from '@expo/vector-icons';
+import { supabase } from '../supabase';
 
 const primaryColor = colors.brandPrimary;
 const dangerColor = colors.danger;
@@ -92,6 +93,44 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
   const type = normalizeDocType(document.type);
   const template = getViewTemplate(type);
   const numberDisplay = formatNumberByType(type, document.number);
+  const [meta, setMeta] = useState<{ issueDate: string; expiryDate: string; issuingState: string; issuingCity: string; issuingAuthority: string }>({
+    issueDate: document.issueDate || '',
+    expiryDate: document.expiryDate || '',
+    issuingState: document.issuingState || '',
+    issuingCity: document.issuingCity || '',
+    issuingAuthority: document.issuingAuthority || '',
+  });
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const isCNH = type === 'CNH';
+        const needsMeta = !meta.issueDate || !meta.expiryDate || !meta.issuingState || !meta.issuingCity || !meta.issuingAuthority;
+        const hasRemoteId = !!(document as any).appId;
+        if (isCNH && needsMeta && hasRemoteId && userId) {
+          const { data: rows } = await supabase
+            .from('doc_cnh')
+            .select('issue_date,expiry_date,issuing_state,issuing_city,issuing_authority')
+            .eq('user_id', userId)
+            .eq('app_id', (document as any).appId)
+            .limit(1);
+          const r = rows && rows[0];
+          if (!cancelled && r) {
+            setMeta((prev) => ({
+              issueDate: prev.issueDate || (r.issue_date as any) || '',
+              expiryDate: prev.expiryDate || (r.expiry_date as any) || '',
+              issuingState: prev.issuingState || (r.issuing_state as any) || '',
+              issuingCity: prev.issuingCity || (r.issuing_city as any) || '',
+              issuingAuthority: prev.issuingAuthority || (r.issuing_authority as any) || '',
+            }));
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [type, userId, (document as any)?.appId]);
 
   async function remove() {
     if (!document?.id) return;
@@ -200,11 +239,11 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13, color: '#6B7280' }}>Data de Expedição</Text>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issueDate || '—'}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{meta.issueDate || '—'}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13, color: '#6B7280' }}>Data de Vencimento</Text>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.expiryDate || '—'}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{meta.expiryDate || '—'}</Text>
             </View>
           </View>
           {(type === 'RG' || type === 'CNH') && (
@@ -212,16 +251,16 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
               <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 13, color: '#6B7280' }}>UF</Text>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingState || '—'}</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{meta.issuingState || '—'}</Text>
                 </View>
                 <View style={{ flex: 2 }}>
                   <Text style={{ fontSize: 13, color: '#6B7280' }}>Cidade</Text>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingCity || '—'}</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{meta.issuingCity || '—'}</Text>
                 </View>
               </View>
               <View>
                 <Text style={{ fontSize: 13, color: '#6B7280' }}>Órgão Emissor</Text>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{document.issuingAuthority || '—'}</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{meta.issuingAuthority || '—'}</Text>
               </View>
             </>
           )}
