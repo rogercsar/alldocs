@@ -328,12 +328,11 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
           ) : null}
           {template.hasBack && document.backImageUri ? (
             <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: accent, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
-            <View style={{ position:'absolute', top:8, left:8, backgroundColor: accent, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
-                  <Ionicons name={template.icon as any} size={14} color='#fff' style={{ marginRight: 6 }} />
-                  <Text style={{ color:'#fff', fontWeight:'700' }}>{template.backLabel}</Text>
-                </View>
-                <Image source={{ uri: document.backImageUri }} style={{ height: 220 }} resizeMode='contain' />
+              <View style={{ position:'absolute', top:8, left:8, backgroundColor: accent, paddingVertical:4, paddingHorizontal:8, borderRadius:8, flexDirection:'row', alignItems:'center', zIndex:1 }}>
+                <Ionicons name={template.icon as any} size={14} color='#fff' style={{ marginRight: 6 }} />
+                <Text style={{ color:'#fff', fontWeight:'700' }}>{template.backLabel}</Text>
               </View>
+              <Image source={{ uri: document.backImageUri }} style={{ height: 220 }} resizeMode='contain' />
             </View>
           ) : null}
         </>
