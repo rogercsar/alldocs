@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useLayoutEffect, useRef, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated, Modal, TextInput, ScrollView, Platform, Linking } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, Share, Alert, Pressable, Animated, Modal, TextInput, ScrollView, Platform, Linking, useWindowDimensions } from 'react-native';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { getDocuments, initDb, countDocuments, deleteDocument, updateDocument, addDocument } from '../storage/db';
 import { syncDocumentDelete, syncDocumentAddOrUpdate } from '../storage/sync';
@@ -144,11 +144,11 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
     navigation.setOptions({
       headerRight: () => (
         userId && userId !== 'anonymous' ? (
-          <StorageUsageCard userId={userId} onOpenUpgrade={(tab) => navigation.navigate('Upgrade', { initialTab: tab })} variant="header" />
+          <StorageUsageCard userId={userId} onOpenUpgrade={() => navigation.navigate('Upgrade', { initialTab: isPremiumPlan ? 'buy-storage' : 'premium' })} variant="header" />
         ) : null
       ),
     });
-  }, [navigation, userId]);
+  }, [navigation, userId, isPremiumPlan]);
   const { showToast } = useToast();
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [limitReached, setLimitReached] = useState(false);
@@ -159,6 +159,9 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const [logoError, setLogoError] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [shareDoc, setShareDoc] = useState<DocumentItem | null>(null);
+  const { width } = useWindowDimensions();
+  const showBrandText = Platform.OS !== 'web' || width >= 420;
+  const [isPremiumPlan, setIsPremiumPlan] = useState<boolean>(false);
   const menuScale = useRef(new Animated.Value(0.95)).current;
   const menuOpacity = useRef(new Animated.Value(0)).current;
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
@@ -558,12 +561,16 @@ const allowsNativeDriver = Platform.OS !== 'web';
               {logoError ? (
                 <>
                   <Ionicons name='document-text' size={28} color={colors.text} />
-                  <Text style={{ marginLeft: 8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: Platform.OS === 'web' ? undefined : 'Nunito_700Bold' }}>EVDocs</Text>
+                  {showBrandText && (
+                    <Text style={{ marginLeft: 8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: Platform.OS === 'web' ? undefined : 'Nunito_700Bold' }}>EVDocs</Text>
+                  )}
                 </>
               ) : (
                 <>
-                  <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:70, height:70 }} />
-                  <Text style={{ marginLeft:  8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: Platform.OS === 'web' ? undefined : 'Nunito_700Bold' }}>EVDocs</Text>
+                  <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width: Platform.OS === 'web' ? 40 : 70, height: Platform.OS === 'web' ? 40 : 70 }} />
+                  {showBrandText && (
+                    <Text style={{ marginLeft:  8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: Platform.OS === 'web' ? undefined : 'Nunito_700Bold' }}>EVDocs</Text>
+                  )}
                 </>
               )}
             </View>
@@ -572,7 +579,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
             <View style={{ flexDirection:'row', alignItems:'center' }}>
               {userId && userId !== 'anonymous' ? (
                 <View style={{ marginRight: 8 }}>
-                  <StorageUsageCard userId={userId} onOpenUpgrade={(tab) => navigation.navigate('Upgrade', { initialTab: tab })} variant="header" />
+                  <StorageUsageCard userId={userId} onOpenUpgrade={() => navigation.navigate('Upgrade', { initialTab: isPremiumPlan ? 'buy-storage' : 'premium' })} variant="header" />
                 </View>
               ) : null}
               <View style={{ position:'relative', paddingVertical:6, paddingHorizontal:10, marginRight: 6 }}>
@@ -591,7 +598,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
             </View>
           ),
         });
-      }, [navigation, load, logoError]);
+      }, [navigation, load, logoError, width, isPremiumPlan]);
 
       const onEdit = (doc: DocumentItem) => {
         navigation.navigate('Edit', { doc });

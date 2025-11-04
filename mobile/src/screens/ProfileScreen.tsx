@@ -207,7 +207,7 @@ export default function ProfileScreen({ navigation }: any) {
                   <Ionicons name='refresh' size={18} color={primary} style={{ marginRight:6 }} />
                   <Text style={{ color: primary, fontWeight: '800' }}>Atualizar</Text>
                 </Pressable>
-                <Pressable onPress={() => navigation.navigate('Plans')} style={({ pressed }) => ({ backgroundColor: pressed ? colors.brandPrimaryDark : primary, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius:10, marginRight: spacing.xs, marginBottom: spacing.xs, flexDirection:'row', alignItems:'center', shadowColor:'#000', shadowOpacity: pressed ? 0.1 : 0.06, shadowRadius: pressed ? 10 : 8 })}>
+                <Pressable onPress={() => navigation.navigate('Upgrade', { initialTab: plan === 'premium' ? 'buy-storage' : 'premium' })} style={({ pressed }) => ({ backgroundColor: pressed ? colors.brandPrimaryDark : primary, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius:10, marginRight: spacing.xs, marginBottom: spacing.xs, flexDirection:'row', alignItems:'center', shadowColor:'#000', shadowOpacity: pressed ? 0.1 : 0.06, shadowRadius: pressed ? 10 : 8 })}>
                   <Ionicons name='pricetags' size={18} color={'#fff'} style={{ marginRight:6 }} />
                   <Text style={{ color:'#fff', fontWeight: '800' }}>{plan === 'premium' ? 'Gerenciar plano' : 'Ver planos'}</Text>
                 </Pressable>
