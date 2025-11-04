@@ -62,20 +62,24 @@ export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, varia
 
   if (variant === 'header') {
     return (
-      <TouchableOpacity onPress={handlePressBar} style={{ flexDirection:'row', alignItems:'center' }}>
+      <TouchableOpacity onPress={handlePressBar} style={{ flexDirection:'column', alignItems:'flex-start' }}>
         {loading ? (
           <Text style={{ color:'#6B7280' }}>Carregando…</Text>
         ) : error ? (
           <Text style={{ color:'#DC2626' }}>{error}</Text>
         ) : (
-          <View style={{ flexDirection:'row', alignItems:'center' }}>
-            <View style={{ width:80, height:8, backgroundColor:'#E5E7EB', borderRadius:9999, overflow:'hidden', marginRight:8 }}>
+          <View style={{ flexDirection:'column', alignItems:'flex-start' }}>
+            <View style={{ width:80, height:8, backgroundColor:'#E5E7EB', borderRadius:9999, overflow:'hidden' }}>
               <View style={{ width: pctRemaining !== null ? `${pctRemaining}%` : '0%', height:8, backgroundColor: color }} />
             </View>
-            {(isRed || isYellow) ? (
-              <Ionicons name={isRed ? 'alert-circle' : 'alert-circle-outline'} size={14} color={color} style={{ marginRight:4 }} />
-            ) : null}
-            <Text style={{ color:'#374151' }}>{remaining !== null ? `${humanBytes(remaining)}` : '—'}</Text>
+            <View style={{ marginTop:4, flexDirection:'row', alignItems:'center' }}>
+              {(isRed || isYellow) ? (
+                <Ionicons name={isRed ? 'alert-circle' : 'alert-circle-outline'} size={12} color={color} style={{ marginRight:4 }} />
+              ) : null}
+              <Text style={{ color:'#6B7280', fontSize:10 }}>
+                {remaining !== null && quota !== null ? `Restante: ${humanBytes(remaining)} de ${humanBytes(quota)} (${pctRemaining}%)` : ''}
+              </Text>
+            </View>
           </View>
         )}
       </TouchableOpacity>
