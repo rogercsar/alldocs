@@ -19,6 +19,21 @@ const bgColor = colors.bg;
 const DOC_TYPES = ['RG', 'CNH', 'CPF', 'Passaporte', 'Comprovante de endereço', 'Documento do veículo', 'Cartões', 'Certidões', 'Título de Eleitor', 'Outros'] as const;
 type DocType = typeof DOC_TYPES[number];
 
+function normalizeDocType(raw?: string): DocType {
+  const t = (raw || '').toLowerCase().trim();
+  if (!t) return 'Outros';
+  if (t.includes('rg')) return 'RG';
+  if (t.includes('cnh')) return 'CNH';
+  if (t.includes('cpf')) return 'CPF';
+  if (t.includes('passaport') || t.includes('passaporte')) return 'Passaporte';
+  if (t.includes('comprovante')) return 'Comprovante de endereço';
+  if (t.includes('veículo') || t.includes('veiculo') || t.includes('documento do veículo')) return 'Documento do veículo';
+  if (t.includes('eleitor') || t.includes('título')) return 'Título de Eleitor';
+  if (t.includes('cart') || t.includes('cartão') || t.includes('cartao')) return 'Cartões';
+  if (t.includes('certid')) return 'Certidões';
+  return 'Outros';
+}
+
 function getViewTemplate(type: DocType) {
   switch (type) {
     case 'RG':
@@ -39,6 +54,8 @@ function getViewTemplate(type: DocType) {
       return { accentColor: '#EF4444', icon: 'wallet', numberLabel: 'Número do Cartão', frontLabel: 'Frente Cartão', backLabel: 'Verso Cartão', layout: 'sideBySide' as const, hasBack: true };
     case 'Certidões':
       return { accentColor: '#A855F7', icon: 'ribbon', numberLabel: 'Número do Registro', frontLabel: 'Frente Certidão', backLabel: 'Verso Certidão', layout: 'vertical' as const, hasBack: true };
+    case 'Outros':
+      return { accentColor: '#9CA3AF', icon: 'document-text', numberLabel: 'Número do Documento', frontLabel: 'Frente', backLabel: 'Verso', layout: 'vertical' as const, hasBack: true };
     default:
       return { accentColor: '#6B7280', icon: 'document-text', numberLabel: 'Número do Documento', frontLabel: 'Frente', backLabel: 'Verso', layout: 'vertical' as const, hasBack: true };
   }
@@ -72,7 +89,7 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
     );
   }
 
-  const type = (document.type || 'Outros') as DocType;
+  const type = normalizeDocType(document.type);
   const template = getViewTemplate(type);
   const numberDisplay = formatNumberByType(type, document.number);
 
@@ -138,9 +155,16 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
         )}
         </View>
 
-      <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, marginBottom: 16 }}>
+      <View style={{ backgroundColor: type === 'Outros' ? '#F9FAFB' : '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: type === 'Outros' ? '#CBD5E1' : '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, marginBottom: 16 }}>
         <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 8 }}>{template.numberLabel}</Text>
         <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>{numberDisplay}</Text>
+            {type === 'Outros' ? (
+              <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 9999, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#D1D5DB' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#374151' }}>Outros</Text>
+                </View>
+              </View>
+            ) : null}
         {type === 'Cartões' && !!document.cardBrand && (
           <View style={{ flexDirection:'row', alignItems:'center', marginTop:8 }}>
             <FontAwesome name={brandIconName(document.cardBrand) as any} size={18} color={'#374151'} />
