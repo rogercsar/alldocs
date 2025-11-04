@@ -117,15 +117,22 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
         const needsMetaCNH = !meta.issueDate || !meta.expiryDate || !meta.issuingState || !meta.issuingCity || !meta.issuingAuthority;
         const needsMetaRG = !meta.issueDate || !meta.issuingState || !meta.issuingCity || !meta.issuingAuthority;
         const needsEleitor = !eleitor.electorZone || !eleitor.electorSection;
-        const hasRemoteId = !!(document as any).appId;
+        const remoteKey = (document as any).appId ?? document.id;
+        const hasRemoteId = !!remoteKey;
         const hasUserSession = !!userId && userId !== 'anonymous';
+        if (Platform.OS === 'web') {
+          console.log('[view] hydration check', { type, userId, remoteKey, needsMetaCNH, needsMetaRG, needsEleitor, meta });
+        }
         if (isCNH && needsMetaCNH && hasRemoteId && hasUserSession) {
-          const { data: rows } = await supabase
+          const { data: rows, error } = await supabase
             .from('doc_cnh')
             .select('issue_date,expiry_date,issuing_state,issuing_city,issuing_authority')
             .eq('user_id', userId)
-            .eq('app_id', (document as any).appId)
+            .eq('app_id', remoteKey as any)
             .limit(1);
+          if (Platform.OS === 'web') {
+            console.log('[view] cnh rows', rows, error);
+          }
           const r = rows && rows[0];
           if (!cancelled && r) {
             setMeta((prev) => ({
@@ -138,12 +145,15 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
           }
         }
         if (isRG && needsMetaRG && hasRemoteId && hasUserSession) {
-          const { data: rows } = await supabase
+          const { data: rows, error } = await supabase
             .from('doc_rg')
             .select('issue_date,issuing_state,issuing_city,issuing_authority')
             .eq('user_id', userId)
-            .eq('app_id', (document as any).appId)
+            .eq('app_id', remoteKey as any)
             .limit(1);
+          if (Platform.OS === 'web') {
+            console.log('[view] rg rows', rows, error);
+          }
           const r = rows && rows[0];
           if (!cancelled && r) {
             setMeta((prev) => ({
@@ -157,12 +167,15 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
           }
         }
         if (isEleitor && needsEleitor && hasRemoteId && hasUserSession) {
-          const { data: rows } = await supabase
+          const { data: rows, error } = await supabase
             .from('doc_eleitor')
             .select('elector_zone,elector_section')
             .eq('user_id', userId)
-            .eq('app_id', (document as any).appId)
+            .eq('app_id', remoteKey as any)
             .limit(1);
+          if (Platform.OS === 'web') {
+            console.log('[view] eleitor rows', rows, error);
+          }
           const r = rows && rows[0];
           if (!cancelled && r) {
             setEleitor((prev) => ({
@@ -172,11 +185,13 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
           }
         }
       } catch (e) {
-        // ignore
+        if (Platform.OS === 'web') {
+          console.log('[view] hydration error', e);
+        }
       }
     })();
     return () => { cancelled = true; };
-  }, [type, userId, (document as any).appId]);
+  }, [type, userId, (document as any).appId, document.id]);
 
   async function remove() {
     if (!document?.id) return;
