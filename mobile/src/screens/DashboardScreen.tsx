@@ -124,6 +124,19 @@ function accentColorForCategory(cat?: string): string | null {
   }
 }
 
+// Fundo do card por categoria (tons suaves)
+function accentBgForCategory(cat?: string): string {
+  switch (cat) {
+    case 'Financeiro': return '#FEE2E2'; // vermelho claro
+    case 'Saúde': return '#ECFDF5';      // verde muito claro
+    case 'Transporte': return '#DCFCE7'; // verde claro
+    case 'Trabalho': return '#FEF3C7';   // amarelo claro
+    case 'Estudo': return '#F5F3FF';     // roxo claro
+    case 'Pessoais': return '#EFF6FF';   // azul claro
+    default: return '#FFFFFF';           // fallback
+  }
+}
+
 export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; onLogout?: () => void; userId: string; }) {
   const navigation = useNavigation<any>();
   const { showToast } = useToast();
