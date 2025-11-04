@@ -469,6 +469,15 @@ const allowsNativeDriver = Platform.OS !== 'web';
               cardSubtype: (rem as any)?.cardSubtype ?? (prev as any)?.cardSubtype,
               issueDate: (rem as any)?.issueDate ?? (prev as any)?.issueDate,
               expiryDate: (rem as any)?.expiryDate ?? (prev as any)?.expiryDate,
+              // Preserva metadados de RG/CNH/Eleitor quando remoto está vazio
+              issuingState: (rem as any)?.issuingState ?? (prev as any)?.issuingState,
+              issuingCity: (rem as any)?.issuingCity ?? (prev as any)?.issuingCity,
+              issuingAuthority: (rem as any)?.issuingAuthority ?? (prev as any)?.issuingAuthority,
+              electorZone: (rem as any)?.electorZone ?? (prev as any)?.electorZone,
+              electorSection: (rem as any)?.electorSection ?? (prev as any)?.electorSection,
+              // Preserva campos de cartões quando remoto está vazio
+              bank: (rem as any)?.bank ?? (prev as any)?.bank,
+              cvc: (rem as any)?.cvc ?? (prev as any)?.cvc,
               updatedAt: rem.updatedAt ?? prev?.updatedAt,
             } as DocumentItem;
             byKey.set(targetKey, mergedItem);
