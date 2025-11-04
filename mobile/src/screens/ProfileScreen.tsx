@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Switch, Platform, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Switch, Platform, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { colors } from '../theme/colors';
@@ -159,8 +159,9 @@ export default function ProfileScreen({ navigation }: any) {
   }, [refresh]);
 
   return (
-    <View style={{ flex:1, backgroundColor: bg, padding: spacing.lg }}>
-      <View style={{ width:'100%', maxWidth:720, alignSelf:'center' }}>
+-    <View style={{ flex:1, backgroundColor: bg, padding: spacing.lg }}>
++    <ScrollView style={{ flex:1, backgroundColor: bg }} contentContainerStyle={{ padding: spacing.lg }}>
+       <View style={{ width:'100%', maxWidth:720, alignSelf:'center' }}>
         <Text style={{ fontSize: typography.sizes.subtitle, fontWeight: '800', color: text, marginBottom: spacing.sm }}>Seu perfil</Text>
 
         <View style={{ backgroundColor: cardBg, borderWidth:1, borderColor: border, borderRadius:16, padding: spacing.lg }}>
@@ -269,6 +270,6 @@ export default function ProfileScreen({ navigation }: any) {
           )}
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
