@@ -154,7 +154,6 @@ export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, us
   const { width } = useWindowDimensions();
   const showBrandText = Platform.OS !== 'web' || width >= 420;
   const [isPremiumPlan, setIsPremiumPlan] = useState<boolean>(false);
-  const { showToast } = useToast();
   const menuScale = useRef(new Animated.Value(0.95)).current;
   const menuOpacity = useRef(new Animated.Value(0)).current;
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
