@@ -14,11 +14,11 @@ function humanBytes(bytes: number) {
   return `${(v).toFixed(2)} ${units[i]}`;
 }
 
-export default function StorageUsageCard({ userId, onOpenUpgrade, apiBase }: { userId?: string | null; onOpenUpgrade?: (tab?: string) => void; apiBase?: string }) {
+export default function StorageUsageCard({ userId, apiBase, onOpenUpgrade, variant }: { userId: string; apiBase?: string; onOpenUpgrade?: (mode: 'upgrade' | 'buy-storage') => void; variant?: 'default' | 'header' }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [used, setUsed] = useState<number | null>(null);
   const [quota, setQuota] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function load() {
     if (!userId) return;
@@ -26,7 +26,7 @@ export default function StorageUsageCard({ userId, onOpenUpgrade, apiBase }: { u
     setError(null);
     try {
       const base = apiBase || process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || (typeof window !== 'undefined' ? (window as any).location.origin : '');
-      const res = await fetch(`${base}/.netlify/functions/usage?userId=${encodeURIComponent(userId)}`);
+      const res = await fetch(`${base}/.netlify/functions/usage?user_id=${encodeURIComponent(userId)}`);
       if (!res.ok) throw new Error(`Status ${res.status}`);
       const j = await res.json();
       setUsed(typeof j.used_bytes === 'number' ? j.used_bytes : null);
@@ -42,6 +42,23 @@ export default function StorageUsageCard({ userId, onOpenUpgrade, apiBase }: { u
   useEffect(() => { load(); }, [userId]);
 
   const pct = (used !== null && quota) ? Math.min(100, Math.round((used / Math.max(1, quota)) * 100)) : null;
+
+  if (variant === 'header') {
+    return (
+      <View style={{ flexDirection:'row', alignItems:'center' }}>
+        {loading ? (
+          <Text style={{ color:'#6B7280' }}>Carregando…</Text>
+        ) : error ? (
+          <Text style={{ color:'#DC2626' }}>{error}</Text>
+        ) : (
+          <Text style={{ color:'#374151' }}>{used !== null ? `Armazenado: ${humanBytes(used)}` : '—'}</Text>
+        )}
+        <TouchableOpacity onPress={() => onOpenUpgrade && onOpenUpgrade('upgrade')} style={{ marginLeft:8, paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1, borderColor:'#D1D5DB', backgroundColor:'#fff' }}>
+          <Text style={{ color:'#111827', fontWeight:'700' }}>Upgrade</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={{ padding:12, backgroundColor:'#fff', borderRadius:10, borderWidth:1, borderColor:'#E5E7EB', marginHorizontal:16, marginTop:12 }}>

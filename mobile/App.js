@@ -18,6 +18,8 @@ import { registerDeviceForUser, getDeviceLockEnabled } from './src/utils/device'
 import { ToastProvider } from './src/components/Toast';
 import { configureNotificationHandler, ensureNotificationPermission } from './src/utils/notifications';
 import DevicesScreen from './src/screens/DevicesScreen';
+import { Text, TextInput } from 'react-native';
+import { useFonts, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold } from '@expo-google-fonts/nunito';
 
 const Stack = createNativeStackNavigator();
 
@@ -27,6 +29,21 @@ export default function App() {
   const [userId, setUserId] = useState('');
   const [lockEnabled, setLockEnabled] = useState(true);
   const navRef = useRef(null);
+
+  const [fontsLoaded] = useFonts({
+    Nunito_400Regular,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      if (!Text.defaultProps) Text.defaultProps = {};
+      Text.defaultProps.style = [{ fontFamily: 'Nunito_400Regular' }, Text.defaultProps.style];
+      if (!TextInput.defaultProps) TextInput.defaultProps = {};
+      TextInput.defaultProps.style = [{ fontFamily: 'Nunito_400Regular' }, TextInput.defaultProps.style];
+    }
+  }, [fontsLoaded]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -66,7 +83,7 @@ export default function App() {
     ensureNotificationPermission().catch(() => {});
   }, []);
 
-  if (!ready) return null;
+  if (!ready || !fontsLoaded) return null;
 
   const isAnonymous = !userId || userId === 'anonymous';
   if (!isAnonymous && lockEnabled && !unlocked) {

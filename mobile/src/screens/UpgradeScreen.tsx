@@ -228,3 +228,5 @@ export default function UpgradeScreen({ onClose, initialTab }: { onClose: () => 
     </View>
   );
 }
+
+// Duplicate UpgradeScreen block removed to keep a single export and avoid conflicts.

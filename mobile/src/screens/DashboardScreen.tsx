@@ -140,6 +140,15 @@ function accentBgForCategory(cat?: string): string {
 
 export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: (tab?: 'premium' | 'buy-storage') => void; onLogout?: () => void; userId: string; }) {
   const navigation = useNavigation<any>();
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        userId && userId !== 'anonymous' ? (
+          <StorageUsageCard userId={userId} onOpenUpgrade={(tab) => navigation.navigate('Upgrade', { initialTab: tab })} variant="header" />
+        ) : null
+      ),
+    });
+  }, [navigation, userId]);
   const { showToast } = useToast();
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [limitReached, setLimitReached] = useState(false);
@@ -893,9 +902,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
 
           </View>
 
-          {userId && userId !== 'anonymous' ? (
-            <StorageUsageCard userId={userId} onOpenUpgrade={() => onUpgrade && onUpgrade('buy-storage')} />
-          ) : null}
+          {null}
 
           {isTypeMenuOpen && (
       <>
