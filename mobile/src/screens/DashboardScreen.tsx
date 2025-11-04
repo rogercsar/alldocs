@@ -212,7 +212,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
         console.log('[dashboard] supabase query start');
         const { data: remote, error } = await supabase
           .from('documents')
-          .select('app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority,elector_zone,elector_section,card_subtype,bank,cvc,card_brand')
+          .select('app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority')
           .eq('user_id', userId)
           .order('updated_at', { ascending: false });
 
@@ -221,7 +221,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
           // Fallback robusto: chamada direta PostgREST com apikey na URL
           if (SUPABASE_URL && SUPABASE_ANON_KEY) {
             const qs = new URLSearchParams({
-              select: 'app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority,elector_zone,elector_section,card_subtype,bank,cvc,card_brand',
+              select: 'app_id,name,number,front_path,back_path,updated_at,type,issue_date,expiry_date,issuing_state,issuing_city,issuing_authority',
               order: 'updated_at.desc',
             });
             const restUrl = `${SUPABASE_URL}/rest/v1/documents?${qs.toString()}&user_id=eq.${encodeURIComponent(userId)}&apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}`;
@@ -255,7 +255,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
                   }
                 } catch {}
               }
-              return {
+              const obj: any = {
                 appId: d.app_id,
                 name: d.name,
                 number: d.number,
@@ -276,6 +276,24 @@ const allowsNativeDriver = Platform.OS !== 'web';
                 synced: 1,
                 updatedAt: d.updated_at ? new Date(d.updated_at).getTime() : undefined,
               } as DocumentItem;
+              // Hidratar metadados do Título de Eleitor via sub-tabela quando necessário
+              const isEleitor = ((obj.type || '') as string).toLowerCase().includes('eleitor');
+              if (isEleitor && userId) {
+                try {
+                  const { data: eleRows } = await supabase
+                    .from('doc_eleitor')
+                    .select('elector_zone,elector_section')
+                    .eq('user_id', userId)
+                    .eq('app_id', d.app_id)
+                    .limit(1);
+                  const e = eleRows && eleRows[0];
+                  if (e) {
+                    if (obj.electorZone == null) obj.electorZone = (e as any).elector_zone;
+                    if (obj.electorSection == null) obj.electorSection = (e as any).elector_section;
+                  }
+                } catch {}
+              }
+              return obj as DocumentItem;
             })
           );
           const mappedA: DocumentItem[] = await Promise.all(

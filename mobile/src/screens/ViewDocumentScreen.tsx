@@ -102,13 +102,19 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
     issuingCity: document.issuingCity || '',
     issuingAuthority: document.issuingAuthority || '',
   });
+  const [eleitor, setEleitor] = useState<{ electorZone: string; electorSection: string }>({
+    electorZone: document.electorZone || '',
+    electorSection: document.electorSection || '',
+  });
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const isCNH = type === 'CNH';
         const isRG = type === 'RG';
+        const isEleitor = type === 'Título de Eleitor';
         const needsMeta = !meta.issueDate || !meta.expiryDate || !meta.issuingState || !meta.issuingCity || !meta.issuingAuthority;
+        const needsEleitor = !eleitor.electorZone || !eleitor.electorSection;
         const hasRemoteId = !!(document as any).appId;
         if (isCNH && needsMeta && hasRemoteId && userId) {
           const { data: rows } = await supabase
@@ -144,6 +150,21 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
               issuingState: prev.issuingState || (r.issuing_state as any) || '',
               issuingCity: prev.issuingCity || (r.issuing_city as any) || '',
               issuingAuthority: prev.issuingAuthority || (r.issuing_authority as any) || '',
+            }));
+          }
+        }
+        if (isEleitor && needsEleitor && hasRemoteId && userId) {
+          const { data: rows } = await supabase
+            .from('doc_eleitor')
+            .select('elector_zone,elector_section')
+            .eq('user_id', userId)
+            .eq('app_id', (document as any).appId)
+            .limit(1);
+          const r = rows && rows[0];
+          if (!cancelled && r) {
+            setEleitor((prev) => ({
+              electorZone: prev.electorZone || (r.elector_zone as any) || '',
+              electorSection: prev.electorSection || (r.elector_section as any) || '',
             }));
           }
         }
