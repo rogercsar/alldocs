@@ -26,7 +26,7 @@ exports.handler = async function(event) {
 
     const preference = {
       items: [
-        { title: itemTitle, quantity: 1, unit_price: price, currency_id: 'BRL' },
+        { title: payload.title || itemTitle, quantity: 1, unit_price: price, currency_id: 'BRL' },
       ],
       payer: email ? { email } : undefined,
       back_urls: {
@@ -36,7 +36,7 @@ exports.handler = async function(event) {
       },
       auto_return: 'approved',
       notification_url: process.env.WEBHOOK_URL || `${process.env.URL}/.netlify/functions/pagamento-webhook`,
-      metadata: { user_id: userId },
+      metadata: payload.metadata ? { ...payload.metadata, user_id: userId } : { user_id: userId },
       external_reference: userId,
     };
 

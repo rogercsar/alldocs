@@ -5,12 +5,61 @@ import { supabase } from '../supabase';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE || process.env.EXPO_PUBLIC_API_BASE_URL || (typeof window !== 'undefined' ? (window as any).location.origin : '');
 
-export default function UpgradeScreen({ onClose }: { onClose: () => void }) {
+export default function UpgradeScreen({ onClose, initialTab }: { onClose: () => void; initialTab?: 'premium' | 'buy-storage' }) {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [polling, setPolling] = useState(false);
   const userIdRef = useRef<string>('');
   const [statusText, setStatusText] = useState<string>('');
+
+  type Addon = { label: string; bytes: number; price: number };
+  const addons: Addon[] = [
+    { label: '+1 GB', bytes: 1 * 1024 * 1024 * 1024, price: 4.9 },
+    { label: '+5 GB', bytes: 5 * 1024 * 1024 * 1024, price: 9.9 },
+    { label: '+20 GB', bytes: 20 * 1024 * 1024 * 1024, price: 29.9 },
+  ];
+  const [selectedTab, setSelectedTab] = useState<'premium' | 'buy-storage'>(initialTab === 'buy-storage' ? 'buy-storage' : 'premium');
+
+  async function startAddonPayment(a: Addon) {
+    setLoading(true);
+    try {
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
+      if (!user?.id) {
+        Alert.alert('É necessário estar logado', 'Entre na sua conta para prosseguir com o pagamento.');
+        return;
+      }
+      userIdRef.current = user.id;
+      const email = user.email || undefined;
+      const title = `EVDocs Armazenamento Adicional ${a.label}`;
+      const res = await fetch(`${API_BASE}/.netlify/functions/mercadopago-create-preference`, {
+        method:'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, email, title, itemTitle: title, price: a.price, metadata: { intent: 'addon', addon_bytes: a.bytes, addon_label: a.label } })
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `Falha ${res.status}`);
+      }
+      const json = await res.json();
+      if (json.init_point) {
+        if (Platform.OS === 'web') {
+          try { (window as any).open(json.init_point, '_blank', 'noopener,noreferrer'); } catch {}
+          setCheckoutUrl(json.init_point);
+        } else {
+          setCheckoutUrl(json.init_point);
+        }
+        setStatusText('Aguardando confirmação do pagamento…');
+        setPolling(true);
+      } else {
+        throw new Error('Preferência não criada');
+      }
+    } catch (e: any) {
+      Alert.alert('Erro ao iniciar pagamento', e?.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function startPayment() {
     setLoading(true);
@@ -26,7 +75,7 @@ export default function UpgradeScreen({ onClose }: { onClose: () => void }) {
       const res = await fetch(`${API_BASE}/.netlify/functions/mercadopago-create-preference`, {
         method:'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, email, itemTitle: 'EVDocs Premium - Pagamento Único', price: 19.9 })
+        body: JSON.stringify({ userId: user.id, email, title: 'EVDocs Premium - Pagamento Único', itemTitle: 'EVDocs Premium - Pagamento Único', price: 19.9, metadata: { intent: 'subscription', plan: 'premium_one_time' } })
       });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
@@ -114,9 +163,35 @@ export default function UpgradeScreen({ onClose }: { onClose: () => void }) {
     <View style={{ flex:1 }}>
       {!checkoutUrl ? (
         <View style={{ flex:1, padding:16 }}>
-          <Text style={{ fontSize: 20, fontWeight:'bold', marginBottom:8 }}>Upgrade Premium</Text>
-          <Text style={{ marginBottom:12 }}>Adicione documentos ilimitados para você e sua família. Pagamento ÚNICO de R$ 19,90.</Text>
-          <Button title={loading ? 'Carregando…' : 'Desbloquear Premium Agora'} onPress={startPayment} disabled={loading} />
+          {/* Tabs */}
+          <View style={{ flexDirection:'row', marginBottom:12 }}>
+            <TouchableOpacity onPress={() => setSelectedTab('premium')} style={{ borderWidth:1, borderColor: selectedTab==='premium' ? '#111827' : '#D1D5DB', backgroundColor: selectedTab==='premium' ? '#111827' : '#fff', paddingVertical:8, paddingHorizontal:12, borderRadius:8, marginRight:8 }}>
+              <Text style={{ color: selectedTab==='premium' ? '#fff' : '#111827', fontWeight:'700' }}>Premium</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setSelectedTab('buy-storage')} style={{ borderWidth:1, borderColor: selectedTab==='buy-storage' ? '#111827' : '#D1D5DB', backgroundColor: selectedTab==='buy-storage' ? '#111827' : '#fff', paddingVertical:8, paddingHorizontal:12, borderRadius:8 }}>
+              <Text style={{ color: selectedTab==='buy-storage' ? '#fff' : '#111827', fontWeight:'700' }}>Armazenamento adicional</Text>
+            </TouchableOpacity>
+          </View>
+
+          {selectedTab === 'premium' ? (
+            <View>
+              <Text style={{ fontSize: 20, fontWeight:'bold', marginBottom:8 }}>Upgrade Premium</Text>
+              <Text style={{ marginBottom:12 }}>Adicione documentos ilimitados para você e sua família. Pagamento ÚNICO de R$ 19,90.</Text>
+              <Button title={loading ? 'Carregando…' : 'Desbloquear Premium Agora'} onPress={startPayment} disabled={loading} />
+            </View>
+          ) : (
+            <View>
+              <Text style={{ fontSize: 20, fontWeight:'bold', marginBottom:8 }}>Armazenamento adicional</Text>
+              <Text style={{ marginBottom:12 }}>Aumente sua cota comprando armazenamento adicional. Escolha uma opção:</Text>
+              {addons.map((a) => (
+                <TouchableOpacity key={a.label} onPress={() => startAddonPayment(a)} style={{ borderWidth:1, borderColor:'#D1D5DB', borderRadius:10, paddingVertical:10, paddingHorizontal:12, marginBottom:8, flexDirection:'row', justifyContent:'space-between' }}>
+                  <Text style={{ fontWeight:'700' }}>{a.label}</Text>
+                  <Text>R$ {a.price.toFixed(2)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
           <View style={{ height:12 }} />
           <Button title="Fechar" onPress={onClose} />
         </View>

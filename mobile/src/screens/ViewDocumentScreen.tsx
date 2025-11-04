@@ -210,7 +210,7 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
   }
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
     <ScrollView style={{ flex: 1, backgroundColor: bgColor }} contentContainerStyle={{ padding: spacing.lg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
@@ -378,7 +378,7 @@ export default function ViewDocumentScreen({ document, onDeleted, onEdit, userId
       )}
     </ScrollView>
     <ShareSheet visible={shareOpen} onClose={() => setShareOpen(false)} document={document} userId={userId} />
-    </>
+    </View>
   );
 }
 

@@ -18,7 +18,34 @@ exports.handler = async function(event) {
       const appIds = Array.isArray(body.appIds) ? body.appIds.filter((x) => typeof x === 'number' || typeof x === 'string').map((x) => parseInt(x, 10)) : [];
       const ttlParam = body.ttl ? parseInt(body.ttl, 10) : 3600;
       const expiresSeconds = Math.min(Math.max(ttlParam, 300), 7 * 24 * 60 * 60);
-      if (!userId || appIds.length === 0) return json({ error: 'Missing userId or appIds' }, 400);
+      const intent = body.intent || 'download';
+      if (!userId || (intent !== 'upload' && appIds.length === 0)) return json({ error: 'Missing userId or appIds' }, 400);
+
+      // Enforcement de quota para uploads
+      if (intent === 'upload') {
+        const expectedBytes = Number(body.expectedBytes || 0);
+        const { data: usageData, error: usageErr } = await supabase
+          .from('usage_cache')
+          .select('used_bytes')
+          .eq('user_id', userId)
+          .single();
+        if (usageErr && usageErr.code !== 'PGRST116') throw usageErr;
+        const usedBytes = usageData?.used_bytes || 0;
+
+        const { data: quotaData, error: quotaErr } = await supabase
+          .from('effective_quota_view')
+          .select('effective_quota_bytes')
+          .eq('user_id', userId)
+          .single();
+        if (quotaErr && quotaErr.code !== 'PGRST116') throw quotaErr;
+        const defaultFreeQuota = 1 * 1024 * 1024 * 1024; // 1GB
+        const effectiveQuotaBytes = quotaData?.effective_quota_bytes ?? defaultFreeQuota;
+
+        if (expectedBytes > 0 && usedBytes + expectedBytes > effectiveQuotaBytes) {
+          return json({ error: 'quota_exceeded', used_bytes: usedBytes, effective_quota_bytes: effectiveQuotaBytes }, 409);
+        }
+        return json({ allowed: true, used_bytes: usedBytes, effective_quota_bytes: effectiveQuotaBytes }, 200);
+      }
 
       // Busca todos os paths de uma vez
       const { data, error } = await supabase

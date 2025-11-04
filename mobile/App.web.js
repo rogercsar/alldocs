@@ -27,6 +27,24 @@ export default function App() {
   const [lockEnabled, setLockEnabled] = useState(true);
   const navRef = useRef(null);
 
+  // Inject global font (web)
+  useEffect(() => {
+    try {
+      const linkInter = document.createElement('link');
+      linkInter.rel = 'stylesheet';
+      linkInter.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap';
+      document.head.appendChild(linkInter);
+      const linkNunito = document.createElement('link');
+      linkNunito.rel = 'stylesheet';
+      linkNunito.href = 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap';
+      document.head.appendChild(linkNunito);
+      const style = document.createElement('style');
+      style.type = 'text/css';
+      style.textContent = `* { font-family: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'; }`;
+      document.head.appendChild(style);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setUserId(data.session?.user?.id || 'anonymous');
@@ -96,7 +114,7 @@ export default function App() {
             <DashboardScreen
               onAdd={() => props.navigation.navigate('Edit')}
               onOpen={(doc) => props.navigation.navigate('View', { doc })}
-              onUpgrade={() => props.navigation.navigate('Upgrade')}
+              onUpgrade={(tab) => props.navigation.navigate('Upgrade', { initialTab: tab })}
               onLogout={() => supabase.auth.signOut().then(() => props.navigation.replace('Onboarding'))}
               userId={userId}
             />
@@ -116,7 +134,7 @@ export default function App() {
           )}
         </Stack.Screen>
         <Stack.Screen name="Upgrade" options={{ title: 'Upgrade' }}>
-          {(props) => <UpgradeScreen onClose={() => props.navigation.replace('Dashboard')} />}
+          {(props) => <UpgradeScreen initialTab={props.route?.params?.initialTab} onClose={() => props.navigation.replace('Dashboard')} />}
         </Stack.Screen>
         <Stack.Screen name="Login" options={{ headerTitle: 'Entrar', headerBackTitle: 'Voltar' }}>
           {(props) => (
@@ -127,7 +145,10 @@ export default function App() {
           {(props) => (
             <SignupScreen
               {...props}
-              onDone={() => props.navigation.replace(props.route?.params?.redirectToUpgrade ? 'Upgrade' : 'Dashboard')}
+              onDone={() => props.navigation.replace(
+                props.route?.params?.redirectToUpgrade ? 'Upgrade' : 'Dashboard',
+                props.route?.params?.redirectToUpgrade ? { initialTab: 'premium' } : undefined
+              )}
             />
           )}
         </Stack.Screen>

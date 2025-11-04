@@ -102,7 +102,7 @@ export default function App() {
             <DashboardScreen
               onAdd={() => props.navigation.navigate('Edit')}
               onOpen={(doc) => props.navigation.navigate('View', { doc })}
-              onUpgrade={() => props.navigation.navigate('Upgrade')}
+              onUpgrade={(tab) => props.navigation.navigate('Upgrade', { initialTab: tab })}
               onLogout={() => supabase.auth.signOut().then(() => props.navigation.replace('Onboarding'))}
               userId={userId}
             />
@@ -122,7 +122,7 @@ export default function App() {
           )}
         </Stack.Screen>
         <Stack.Screen name="Upgrade" options={{ title: 'Upgrade' }}>
-          {(props) => <UpgradeScreen onClose={() => props.navigation.replace('Dashboard')} />}
+          {(props) => <UpgradeScreen initialTab={props.route?.params?.initialTab} onClose={() => props.navigation.replace('Dashboard')} />}
         </Stack.Screen>
         <Stack.Screen name="Login" options={{ headerTitle: 'Entrar', headerBackTitle: 'Voltar' }}>
           {(props) => (
@@ -133,7 +133,10 @@ export default function App() {
           {(props) => (
             <SignupScreen
               {...props}
-              onDone={() => props.navigation.replace(props.route?.params?.redirectToUpgrade ? 'Upgrade' : 'Dashboard')}
+              onDone={() => props.navigation.replace(
+                props.route?.params?.redirectToUpgrade ? 'Upgrade' : 'Dashboard',
+                props.route?.params?.redirectToUpgrade ? { initialTab: 'premium' } : undefined
+              )}
             />
           )}
         </Stack.Screen>

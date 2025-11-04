@@ -24,6 +24,29 @@ async function uploadImage(path: string, userId: string): Promise<string> {
   const fileName = `${userId}/${Date.now()}_${path.split('/').pop()}`;
   const file = await fetch(path);
   const blob = await file.blob();
+
+  // Preflight de quota antes do upload
+  try {
+    const url = (API_BASE ? `${API_BASE}/.netlify/functions/signed-urls` : '/.netlify/functions/signed-urls');
+    const resp = await fetch(`${url}?intent=upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, expectedBytes: (blob as any).size || blob.size || 0 }),
+    });
+    if (resp.status === 409) {
+      const j = await resp.json().catch(() => ({}));
+      const msg = (j && (j.error || j.message)) || 'Limite de armazenamento atingido';
+      throw new Error(`QUOTA_EXCEEDED: ${msg}`);
+    }
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      console.warn('[sync] preflight quota check failed', resp.status, txt);
+    }
+  } catch (e) {
+    // Se falhar a verificação de quota por rede, tentamos assim mesmo o upload
+    console.warn('[sync] quota preflight error', e);
+  }
+
   const { data, error } = await supabase.storage.from(STORAGE_BUCKET).upload(fileName, blob, { upsert: true });
   if (error) throw error;
   return data.path;

@@ -48,6 +48,7 @@ function getTemplate(type: typeof DOC_TYPES[number]) {
 
 export default function EditDocumentScreen({ onSaved, userId, document }: { onSaved: () => void; userId: string; document?: DocumentItem }) {
   const { showToast } = useToast();
+  const navigation = useNavigation<any>();
   const [name, setName] = useState(document?.name || '');
   const [number, setNumber] = useState(document?.number || '');
   const [frontUri, setFrontUri] = useState<string | undefined>(document?.frontImageUri || undefined);
@@ -208,7 +209,15 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
       setSaving(false);
       try {
         await syncDocumentAddOrUpdate({ id: document.id, appId: document.appId, name, number, frontImageUri: f, backImageUri: b, type: docType, category, ...meta }, userId);
-      } catch {}
+      } catch (e: any) {
+        const msg = e?.message || String(e);
+        if (/QUOTA_EXCEEDED/i.test(msg)) {
+          Alert.alert('Limite de armazenamento atingido', 'Você excedeu sua cota. Faça upgrade ou compre armazenamento adicional.');
+          showToast('Falha no upload: quota atingida', { type: 'error' });
+          navigation.navigate('Upgrade', { initialTab: 'buy-storage' });
+          return;
+        }
+      }
       showToast('Alterações salvas', { type: 'success' });
       onSaved();
       return;
@@ -221,7 +230,15 @@ export default function EditDocumentScreen({ onSaved, userId, document }: { onSa
     setSaving(false);
     try {
       await syncDocumentAddOrUpdate({ id, appId: appIdNew, name, number, frontImageUri: f, backImageUri: b, type: docType, category, ...meta }, userId);
-    } catch {}
+    } catch (e: any) {
+      const msg = e?.message || String(e);
+      if (/QUOTA_EXCEEDED/i.test(msg)) {
+        Alert.alert('Limite de armazenamento atingido', 'Você excedeu sua cota. Faça upgrade ou compre armazenamento adicional.');
+        showToast('Falha no upload: quota atingida', { type: 'error' });
+        navigation.navigate('Upgrade', { initialTab: 'buy-storage' });
+        return;
+      }
+    }
     showToast('Documento criado', { type: 'success' });
     onSaved();
   }

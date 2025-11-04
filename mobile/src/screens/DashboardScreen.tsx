@@ -8,6 +8,7 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import ShareSheet from '../components/ShareSheet';
+import StorageUsageCard from '../components/StorageUsageCard';
 import * as Clipboard from 'expo-clipboard';
 import { useToast } from '../components/Toast';
 import { scheduleExpiryNotifications } from '../utils/notifications';
@@ -137,7 +138,7 @@ function accentBgForCategory(cat?: string): string {
   return 'rgba(158, 158, 158, 0.08)';                               // cinza neutro
 }
 
-export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: () => void; onLogout?: () => void; userId: string; }) {
+export default function DashboardScreen({ onAdd, onOpen, onUpgrade, onLogout, userId }: { onAdd: () => void; onOpen: (doc: DocumentItem) => void; onUpgrade: (tab?: 'premium' | 'buy-storage') => void; onLogout?: () => void; userId: string; }) {
   const navigation = useNavigation<any>();
   const { showToast } = useToast();
   const [docs, setDocs] = useState<DocumentItem[]>([]);
@@ -546,9 +547,15 @@ const allowsNativeDriver = Platform.OS !== 'web';
           headerLeft: () => (
             <View style={{ flexDirection:'row', alignItems:'center', paddingLeft: 8 }}>
               {logoError ? (
-                <Ionicons name='document-text' size={28} color={colors.text} />
+                <>
+                  <Ionicons name='document-text' size={28} color={colors.text} />
+                  <Text style={{ marginLeft: 8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: 'Inter' }}>EVDocs</Text>
+                </>
               ) : (
-                <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:70, height:70 }} />
+                <>
+                  <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:70, height:70 }} />
+                  <Text style={{ marginLeft: 8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: 'Inter' }}>EVDocs</Text>
+                </>
               )}
             </View>
           ),
@@ -809,9 +816,15 @@ const allowsNativeDriver = Platform.OS !== 'web';
           headerLeft: () => (
             <View style={{ flexDirection:'row', alignItems:'center', paddingLeft: 8 }}>
               {logoError ? (
-                <Ionicons name='document-text' size={28} color={colors.text} />
+                <>
+                  <Ionicons name='document-text' size={28} color={colors.text} />
+                  <Text style={{ marginLeft: 8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: 'Inter' }}>EVDocs</Text>
+                </>
               ) : (
-                <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:70, height:70 }} />
+                <>
+                  <Image source={require('../../assets/icon.png')} onError={() => setLogoError(true)} style={{ width:70, height:70 }} />
+                  <Text style={{ marginLeft: 8, color: colors.text, fontSize: 18, fontWeight: '800', fontFamily: 'Inter' }}>EVDocs</Text>
+                </>
               )}
             </View>
           ),
@@ -879,6 +892,10 @@ const allowsNativeDriver = Platform.OS !== 'web';
             </View>
 
           </View>
+
+          {userId && userId !== 'anonymous' ? (
+            <StorageUsageCard userId={userId} onOpenUpgrade={() => onUpgrade && onUpgrade('buy-storage')} />
+          ) : null}
 
           {isTypeMenuOpen && (
       <>
@@ -950,7 +967,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
                       </View>
                     ))}
                     <View style={{ height:8 }} />
-                    <TouchableOpacity onPress={onUpgrade} style={{ alignSelf:'flex-start', borderWidth:1, borderColor: colors.brandPrimary, borderRadius:8, paddingVertical:8, paddingHorizontal:12 }}>
+                    <TouchableOpacity onPress={() => onUpgrade && onUpgrade('premium')} style={{ alignSelf:'flex-start', borderWidth:1, borderColor: colors.brandPrimary, borderRadius:8, paddingVertical:8, paddingHorizontal:12 }}>
                       <Text style={{ color: colors.brandPrimary, fontWeight:'700' }}>Ver planos</Text>
                     </TouchableOpacity>
                   </View>

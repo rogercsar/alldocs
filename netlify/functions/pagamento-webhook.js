@@ -30,13 +30,66 @@ exports.handler = async function(event) {
     if (!userId) return json({ error: 'Missing user_id metadata' }, 400);
     if (status !== 'approved') return json({ ok: true, status }, 200);
 
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ is_premium: true })
-      .eq('id', userId);
-    if (error) throw error;
+    const meta = payment?.metadata || {};
+    const type = meta?.type || 'legacy';
 
-    return json({ ok: true, status: 'approved' });
+    if (type === 'subscription') {
+      const planId = meta.plan_id;
+      // Se não houver plan_id, mantém comportamento legado
+      if (!planId) {
+        const { error: profErr } = await supabase
+          .from('user_profiles')
+          .update({ is_premium: true })
+          .eq('id', userId);
+        if (profErr) throw profErr;
+      } else {
+        const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: existing, error: selErr } = await supabase
+          .from('subscriptions')
+          .select('id')
+          .eq('user_id', userId)
+          .limit(1);
+        if (selErr) throw selErr;
+
+        if (Array.isArray(existing) && existing.length > 0) {
+          const subId = existing[0].id;
+          const { error: updErr } = await supabase
+            .from('subscriptions')
+            .update({ plan_id: planId, status: 'active', current_period_end: periodEnd, updated_at: new Date().toISOString() })
+            .eq('id', subId);
+          if (updErr) throw updErr;
+        } else {
+          const { error: insErr } = await supabase
+            .from('subscriptions')
+            .insert({ user_id: userId, plan_id: planId, status: 'active', current_period_end: periodEnd, created_at: new Date().toISOString() });
+          if (insErr) throw insErr;
+        }
+
+        // Marca também o perfil como premium para compatibilidade com fluxos existentes
+        const { error: profErr } = await supabase
+          .from('user_profiles')
+          .update({ is_premium: true })
+          .eq('id', userId);
+        if (profErr) throw profErr;
+      }
+    } else if (type === 'storage_addon') {
+      const bytes = Number(meta.bytes || 0);
+      if (bytes > 0) {
+        const { error: addonErr } = await supabase
+          .from('storage_addons')
+          .insert({ user_id: userId, bytes, status: 'active', created_at: new Date().toISOString() });
+        if (addonErr) throw addonErr;
+      }
+    } else {
+      // Comportamento legado: apenas marca premium
+      const { error: profErr } = await supabase
+        .from('user_profiles')
+        .update({ is_premium: true })
+        .eq('id', userId);
+      if (profErr) throw profErr;
+    }
+
+    return json({ ok: true, status: 'approved', type });
   } catch (e) {
     console.error(e);
     return json({ error: e.message }, 500);

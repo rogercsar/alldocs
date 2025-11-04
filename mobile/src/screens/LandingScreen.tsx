@@ -62,7 +62,7 @@ export default function LandingScreen({ onLogin, onViewPlans }: Props) {
         {/* Hero */}
         <Animated.View style={{ opacity: fade, transform: [{ scale }], alignItems:'center', marginTop: isWide ? 18 : 12, marginBottom: isWide ? 22 : 18 }}>
           <Image source={require('../../assets/icon.png')} style={{ width: logoSize, height: logoSize, borderRadius: 26, marginBottom: 10 }} />
-          <Text style={{ fontSize: isXwide ? 34 : isWide ? 30 : 28, fontWeight:'800', color: titulo }}>EVDocs</Text>
+          <Text style={{ fontSize: isXwide ? 34 : isWide ? 30 : 28, fontWeight:'800', color: titulo, fontFamily: 'Inter' }}>EVDocs</Text>
           <Text style={{ color: mutedText, marginTop:6, textAlign:'center', maxWidth:560 }}>
             Armazene e acesse seus documentos com segurança. Pagamento único, sem mensalidade.
           </Text>
