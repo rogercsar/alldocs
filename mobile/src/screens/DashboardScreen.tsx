@@ -16,6 +16,37 @@ const primaryColor = colors.brandPrimary;
 const bgColor = colors.bg;
 const dangerColor = colors.danger;
 
+function normalizeDocType(raw?: string): string {
+  const t = (raw || '').toLowerCase().trim();
+  if (!t) return 'Outros';
+  if (t.includes('rg')) return 'RG';
+  if (t.includes('cnh')) return 'CNH';
+  if (t.includes('cpf')) return 'CPF';
+  if (t.includes('passaport') || t.includes('passaporte')) return 'Passaporte';
+  if (t.includes('comprovante')) return 'Comprovante de endereço';
+  if (t.includes('veículo') || t.includes('veiculo') || t.includes('documento do veículo')) return 'Documento do veículo';
+  if (t.includes('eleitor') || t.includes('título')) return 'Título de Eleitor';
+  if (t.includes('cart') || t.includes('cartão') || t.includes('cartao')) return 'Cartões';
+  if (t.includes('certid')) return 'Certidões';
+  return 'Outros';
+}
+
+function accentBgForType(type?: string): string {
+  switch (normalizeDocType(type)) {
+    case 'Cartões': return '#FEF2F2'; // vermelho sutil
+    case 'RG': return '#EFF6FF'; // azul sutil
+    case 'CNH': return '#ECFDF5'; // verde sutil
+    case 'Documento do veículo': return '#F0FDF4'; // verde ainda mais claro
+    case 'Comprovante de endereço': return '#E0F2FE'; // celeste sutil
+    case 'Passaporte': return '#F5F3FF'; // roxo muito claro
+    case 'Certidões': return '#F5F3FF'; // roxo muito claro
+    case 'Título de Eleitor': return '#DBEAFE'; // azul claro
+    case 'CPF': return '#FEF3C7'; // âmbar claro
+    case 'Outros': return '#F9FAFB'; // cinza claro
+    default: return '#fff';
+  }
+}
+
 
 function iconForType(type?: string): { name: keyof typeof Ionicons.glyphMap; color: string } {
   switch (type) {
@@ -459,7 +490,7 @@ const allowsNativeDriver = Platform.OS !== 'web';
         const hasId = typeof item.id === 'number';
         const itemKey = keyForItem(item);
         const isOpen = menuFor === itemKey;
-        const accentBg = item.type === 'Cartões' ? '#FEF2F2' : item.type === 'RG' ? '#EFF6FF' : item.type === 'CNH' ? '#ECFDF5' : '#fff';
+        const accentBg = accentBgForType(item.type);
         return (
           <TouchableOpacity onPress={() => onOpen(item)} style={{ flex:1, margin:8, padding:14, backgroundColor: accentBg, borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation: isOpen ? 12 : 2, zIndex: isOpen ? 1000 : 0, overflow:'visible' }}>
             <View style={{ flexDirection:'row', alignItems:'center' }}>
