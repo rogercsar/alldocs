@@ -159,8 +159,8 @@ export default function ProfileScreen({ navigation }: any) {
   }, [refresh]);
 
   return (
--    <View style={{ flex:1, backgroundColor: bg, padding: spacing.lg }}>
-+    <ScrollView style={{ flex:1, backgroundColor: bg }} contentContainerStyle={{ padding: spacing.lg }}>
+    <View style={{ flex:1, backgroundColor: bg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
        <View style={{ width:'100%', maxWidth:720, alignSelf:'center' }}>
         <Text style={{ fontSize: typography.sizes.subtitle, fontWeight: '800', color: text, marginBottom: spacing.sm }}>Seu perfil</Text>
 
@@ -268,6 +268,7 @@ export default function ProfileScreen({ navigation }: any) {
           )}
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
