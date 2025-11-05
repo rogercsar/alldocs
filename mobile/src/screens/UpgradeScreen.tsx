@@ -42,19 +42,18 @@ export default function UpgradeScreen({ onClose, initialTab }: { onClose: () => 
   async function startAddonPayment(a: Addon) {
     setLoading(true);
     try {
-      const { data } = await supabase.auth.getUser();
-      const user = data?.user;
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user?.id) {
         Alert.alert('É necessário estar logado', 'Entre na sua conta para prosseguir com o pagamento.');
         return;
       }
       userIdRef.current = user.id;
-      const email = user.email || undefined;
-      const title = `EVDocs Armazenamento Adicional ${a.label}`;
+      const planId = a.label.includes('1') ? '3' : a.label.includes('5') ? '4' : '5';
       const res = await fetch(`${API_BASE}/.netlify/functions/mercadopago-create-preference`, {
         method:'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, email, title, itemTitle: title, price: a.price, metadata: { intent: 'addon', addon_bytes: a.bytes, addon_label: a.label } })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ planId })
       });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
@@ -83,18 +82,17 @@ export default function UpgradeScreen({ onClose, initialTab }: { onClose: () => 
   async function startPayment() {
     setLoading(true);
     try {
-      const { data } = await supabase.auth.getUser();
-      const user = data?.user;
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user?.id) {
         Alert.alert('É necessário estar logado', 'Entre na sua conta para prosseguir com o pagamento.');
         return;
       }
       userIdRef.current = user.id;
-      const email = user.email || undefined;
       const res = await fetch(`${API_BASE}/.netlify/functions/mercadopago-create-preference`, {
         method:'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, email, title: 'EVDocs Premium - Pagamento Único', itemTitle: 'EVDocs Premium - Pagamento Único', price: 19.9, metadata: { intent: 'subscription', plan: 'premium_one_time' } })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ planId: '2' })
       });
       if (!res.ok) {
         const j = await res.json().catch(() => null);

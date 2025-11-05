@@ -663,14 +663,30 @@ const allowsNativeDriver = Platform.OS !== 'web';
        const [focusedKey, setFocusedKey] = useState<string | null>(null);
       const renderItem = ({ item }: { item: DocumentItem }) => {
         const icon = iconForType(item.type);
-        const hasId = typeof item.id === 'number';
         const itemKey = keyForItem(item);
         const isOpen = menuFor === itemKey;
         const accentBg = accentBgForCategory(displayCategory(item));
         return (
-          <Pressable onPress={() => onOpen(item)} onHoverIn={() => setHoveredKey(itemKey)} onHoverOut={() => setHoveredKey((k) => (k === itemKey ? null : k))} onFocus={() => setFocusedKey(itemKey)} onBlur={() => setFocusedKey((k) => (k === itemKey ? null : k))} style={({ pressed }) => ({ flex:1, margin:8, padding:14, backgroundColor: accentBg, borderWidth:1, borderColor:'#E5E7EB', borderRadius:12, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:12, elevation: isOpen ? 12 : 2, zIndex: isOpen ? 1000 : 0, overflow:'visible', opacity: pressed || hoveredKey === itemKey ? 0.97 : 1, transform: [{ scale: pressed ? 0.98 : hoveredKey === itemKey ? 0.99 : 1 }], outlineWidth: Platform.OS === 'web' && focusedKey === itemKey ? 2 : 0, outlineColor: Platform.OS === 'web' && focusedKey === itemKey ? '#60A5FA' : 'transparent', outlineStyle: Platform.OS === 'web' && focusedKey === itemKey ? 'solid' : 'none' })}>
-            <View style={{ flexDirection:'row', alignItems:'center' }}>
-              <View style={{ width:36, height:36, borderRadius:8, backgroundColor:'#F9FAFB', alignItems:'center', justifyContent:'center', marginRight:10 }}>
+          <Pressable
+            onPress={() => onOpen(item)}
+            onHoverIn={() => setHoveredKey(itemKey)}
+            onHoverOut={() => setHoveredKey(k => k === itemKey ? null : k)}
+            onFocus={() => setFocusedKey(itemKey)}
+            onBlur={() => setFocusedKey(k => k === itemKey ? null : k)}
+            style={({ pressed }) => [
+              styles.card,
+              {
+                backgroundColor: accentBg,
+                elevation: isOpen ? 12 : 2,
+                zIndex: isOpen ? 1000 : 0,
+                opacity: pressed || hoveredKey === itemKey ? 0.97 : 1,
+                transform: [{ scale: pressed ? 0.98 : (hoveredKey === itemKey ? 0.99 : 1) }],
+                outlineColor: Platform.OS === 'web' && focusedKey === itemKey ? '#60A5FA' : 'transparent',
+              }
+            ]}
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.iconContainer}>
                 {item.type === 'Cartões' && !!item.cardBrand ? (
                   <FontAwesome name={brandIconName(item.cardBrand) as any} size={20} color={'#374151'} />
                 ) : (
@@ -678,14 +694,14 @@ const allowsNativeDriver = Platform.OS !== 'web';
                 )}
               </View>
               <View style={{ flex:1 }}>
-                <Text style={{ fontSize:16, fontWeight:'800', color:'#111827' }}>{item.name}</Text>
-                <Text style={{ fontSize:12, color:'#6B7280', marginTop:2, fontWeight:'500' }}>{item.type || 'Documento'}</Text>
+                <Text style={styles.cardTitle}>{item.name}</Text>
+                <Text style={styles.cardSubtitle}>{item.type || 'Documento'}</Text>
               </View>
               <TouchableOpacity onPress={() => setMenuFor(itemKey)}>
                 <Ionicons name='ellipsis-vertical' size={20} color={'#9CA3AF'} />
               </TouchableOpacity>
             </View>
-            <Text style={{ fontSize:12, color:'#374151', marginTop:10 }}>{item.number || '—'}</Text>
+            <Text style={styles.cardNumber}>{item.number || '—'}</Text>
 
             <View style={{ flexDirection:'row', flexWrap:'wrap', marginTop:8 }}>
               {item.cardSubtype ? (
@@ -1109,11 +1125,6 @@ const allowsNativeDriver = Platform.OS !== 'web';
                     <Ionicons name='notifications' size={18} color={'#111827'} style={{ marginRight:10 }} />
                     <Text style={{ fontSize:15, color:'#111827', fontWeight:'700' }}>Notificações</Text>
                   </Pressable>
-                  <View style={{ height:1, backgroundColor:'#F3F4F6' }} />
-                  <Pressable onPress={() => { setHeaderMenuOpen(false); logout(); }} style={({ pressed }) => ({ paddingVertical:12, paddingHorizontal:14, flexDirection:'row', alignItems:'center', backgroundColor: pressed ? '#EFEFEF' : '#fff' })}>
-                    <Ionicons name='log-out' size={18} color={dangerColor} style={{ marginRight:10 }} />
-                    <Text style={{ fontSize:15, color: dangerColor, fontWeight:'700' }}>Sair</Text>
-                  </Pressable>
                 </View>
               </Animated.View>
             </>
@@ -1137,3 +1148,48 @@ const allowsNativeDriver = Platform.OS !== 'web';
         </TouchableOpacity>
       );
     }
+const styles = StyleSheet.create({
+  card: {
+    flex: 1,
+    margin: 8,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    overflow: 'visible',
+    outlineWidth: Platform.OS === 'web' ? 2 : 0,
+    outlineStyle: 'solid',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  cardNumber: {
+    fontSize: 12,
+    color: '#374151',
+    marginTop: 10,
+  },
+});
