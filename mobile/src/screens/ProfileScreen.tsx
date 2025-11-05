@@ -221,12 +221,10 @@ export default function ProfileScreen({ navigation }: any) {
 
               <View style={{ height:1, backgroundColor: border, marginVertical: spacing.md }} />
 
-              {/* Armazenamento */}
               <StorageUsageCard userId={userId} onOpenUpgrade={(mode) => navigation.navigate('Upgrade', { initialTab: mode === 'buy-storage' ? 'buy-storage' : 'premium' })} />
 
               <View style={{ height:1, backgroundColor: border, marginVertical: spacing.md }} />
 
-              {/* Segurança */}
               <View style={{ borderWidth:1, borderColor: border, backgroundColor: colors.surface, borderRadius:12, padding: spacing.md, marginBottom: spacing.sm }}>
                 <View style={{ flexDirection:'row', alignItems:'center' }}>
                   <Ionicons name='lock-closed' size={18} color={colors.mutedIcon} style={{ marginRight:8 }} />
