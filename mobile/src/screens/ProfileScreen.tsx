@@ -263,12 +263,97 @@ export default function ProfileScreen({ navigation }: any) {
                 </View>
               )}
 
-              <Text style={{ color: mutedText, fontSize: typography.sizes.caption, marginTop: spacing.xs }}>A contagem considera cada dispositivo autenticado nas últimas sessões.</Text>
+              <Text style={styles.mutedText}>A contagem considera cada dispositivo autenticado nas últimas sessões.</Text>
             </View>
           )}
+        </View>
+
+        <View style={{ marginTop: spacing.lg }}>
+          <Pressable onPress={() => supabase.auth.signOut()} style={({ pressed }) => [styles.logoutButton, pressed && styles.logoutButtonPressed]}>
+            <Ionicons name='log-out-outline' size={22} color={'#B91C1C'} style={{ marginRight:8 }} />
+            <Text style={styles.logoutButtonText}>Sair da conta</Text>
+          </Pressable>
         </View>
       </View>
       </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  contentContainer: {
+    padding: spacing.lg,
+  },
+  profileCard: {
+    backgroundColor: colors.cardBg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    padding: spacing.lg,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  profileHeaderText: {
+    color: colors.text,
+    fontWeight: '800',
+  },
+  profileSubText: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.caption,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.xs,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  infoText: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  planText: {
+    marginLeft: 6,
+    fontWeight: '700',
+  },
+  mutedText: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.caption,
+    marginTop: spacing.xs,
+  },
+  logoutButton: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 12,
+    backgroundColor: '#FFF1F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutButtonPressed: {
+    backgroundColor: '#F8F8F8',
+    borderColor: '#E0E0E0',
+  },
+  logoutButtonText: {
+    color: '#B91C1C',
+    fontWeight: '800',
+    fontSize: typography.sizes.body,
+  },
+});

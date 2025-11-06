@@ -1,9 +1,11 @@
 const { createClient } = require('@supabase/supabase-js');
 const mercadopago = require('mercadopago');
+const crypto = require('crypto');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
+const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 mercadopago.configure({ access_token: MP_ACCESS_TOKEN });
@@ -17,7 +19,30 @@ exports.handler = async function(event) {
   }
 
   try {
+    const signatureHeader = event.headers['x-signature'];
+    const requestIdHeader = event.headers['x-request-id'];
     const body = event.body ? JSON.parse(event.body) : {};
+
+    if (MP_WEBHOOK_SECRET && signatureHeader && requestIdHeader) {
+      const parts = signatureHeader.split(',').reduce((acc, part) => {
+        const [key, value] = part.trim().split('=');
+        acc[key] = value;
+        return acc;
+      }, {});
+      const ts = parts.ts;
+      const v1 = parts.v1;
+      const dataId = body?.data?.id;
+      const signedMessage = `id:${dataId};request-id:${requestIdHeader};ts:${ts};`;
+      const hmac = crypto.createHmac('sha256', MP_WEBHOOK_SECRET);
+      hmac.update(signedMessage);
+      const computedSignature = hmac.digest('hex');
+      if (computedSignature !== v1) {
+        return json({ error: 'Invalid signature' }, 401);
+      }
+    } else if (MP_WEBHOOK_SECRET) {
+      return json({ error: 'Missing signature headers' }, 401);
+    }
+
     const paymentId = body?.data?.id || body?.id;
     if (!paymentId) return json({ error: 'Invalid payload' }, 400);
 
