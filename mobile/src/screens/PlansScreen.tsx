@@ -4,21 +4,25 @@ import { View, Text, ScrollView } from 'react-native';
 export default function PlansScreen() {
   const plans = [
     {
-      name: 'Grátis',
+      name: 'Plano Gratuito',
       price: 'R$ 0',
       features: [
+        'Até 2 Dispositivos',
+        'Armazenamento: 1Gb',
         'Crie e edite documentos localmente',
-        'Sincronize até 50 MB',
         'Compartilhamento básico',
       ],
     },
     {
-      name: 'Premium Vitalício',
-      price: 'R$ 199,90 (único)',
+      name: 'Plano Premium',
+      price: 'R$ 19,90',
       features: [
-        'Sincronização ilimitada de documentos',
+        'Sincronização até 5 dispositivos',
+        'Armazenamento: 5Gb',
+        'Todos documentos',
         'Criptografia ponta-a-ponta',
         'Prioridade no suporte',
+        'Todos com possibilidade de comprar mais armazenamento'
       ],
     },
   ];
